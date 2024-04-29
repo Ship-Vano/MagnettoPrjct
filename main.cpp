@@ -12,9 +12,7 @@ int main() {
     double h = 0.0025;
     double tau = 0.00002;
 
-    MHDProblem problem1(gam_hcr, x0, X, t0, T, h, tau, what_is_L);
-
-    problem1.initStateFunc = ([&](double x) {
+    std::function<std::vector<double>(double)> BrioWu1 = ([&](double x) {
         if(x < 0.){
             const double rhoL = 1.;
             const double uL = 0.;
@@ -39,7 +37,7 @@ int main() {
         }
     });
 
-    problem1.leftBoundaryFunction = ([&](double t){
+    std::function<std::vector<double>(double)> leftBound1 =([&](double t){
         const double rhoL = 1.;
         const double uL = 0.;
         const double vL = 0.;
@@ -51,7 +49,7 @@ int main() {
         return state_from_primitive_vars(rhoL, uL, vL, wL, pL, BxL, ByL, BzL, gam_hcr);
     });
 
-    problem1.rightBoundaryFunction = ([&](double t){
+    std::function<std::vector<double>(double)> rightBound1 = ([&](double t){
         const double rhoR = 0.125;
         const double uR = 0.;
         const double vR = 0.;
@@ -63,6 +61,22 @@ int main() {
         return state_from_primitive_vars(rhoR, uR, vR, wR, pR, BxR, ByR, BzR, gam_hcr);
     });
 
-    HLLScheme(problem1);
+    MHDProblem problem1(gam_hcr, x0, X, t0, T, h, tau, what_is_L);
+
+    problem1.initStateFunc = BrioWu1;
+
+    problem1.leftBoundaryFunction = leftBound1;
+
+    problem1.rightBoundaryFunction = rightBound1;
+
+    //HLLScheme(problem1);
+    double h2 = 0.005;
+    double tau2 = 0.0002;
+    MHDProblem problem2(gam_hcr, x0, X, t0, T, h2, tau2, what_is_L);
+    problem2.initStateFunc = BrioWu1;
+    problem2.initStateFunc = BrioWu1;
+    problem2.leftBoundaryFunction = leftBound1;
+    problem2.rightBoundaryFunction = rightBound1;
+    HLLCScheme(problem2);
     return 0;
 }

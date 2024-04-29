@@ -45,7 +45,7 @@ state_from_primitive_vars(const double &rho, const double &u, const double &v, c
     return U;
 }
 
-// Определяем МГД-поток
+// Определяем МГД-поток (из состояния)
 std::vector<double> MHD_flux(const std::vector<double>& U, const double &gam_hcr) {
     double rho = U[0];
     double u = U[1]/rho;
@@ -58,6 +58,22 @@ std::vector<double> MHD_flux(const std::vector<double>& U, const double &gam_hcr
 
     double p = pressure(gam_hcr, e, rho, u, v, w, Bx, By, Bz);
     double pT = ptotal(p, Bx, By, Bz);
+
+    std::vector<double> F(8, 0);
+    F[0] = rho * u;
+    F[1] = rho * u * u + pT - Bx * Bx /*/(4*PI)*/;
+    F[2] = rho * v * u - Bx * By /*/ (4 * PI)*/;
+    F[3] = rho * w * u - Bx * Bz /*/ (4 * PI)*/;
+    F[4] = (e + pT) * u - Bx * (u * Bx + v * By + w * Bz) /*/ (4 * PI)*/;
+    F[5] = 0;
+    F[6] = By * u - Bx * v;
+    F[7] = Bz * u - Bx * w;
+
+    return F;
+}
+
+// Определяем МГД-поток
+std::vector<double> MHD_flux(const double &rho, const double &u, const double &v, const double &w, const double &e, const double &Bx, const double &By, const double &Bz, const double &pT, const double &gam_hcr) {
 
     std::vector<double> F(8, 0);
     F[0] = rho * u;
@@ -128,6 +144,90 @@ std::vector<double> HLL_flux(const std::vector<double>& U_L, const std::vector<d
     }
     else if (SL <= 0 && SR >= 0) {
         return 1 / (SR - SL) * (SR * MHD_flux(U_L, gam_hcr) - SL * MHD_flux(U_R, gam_hcr) + SL * SR * (U_R - U_L));
+    }
+    //if (SR < 0)
+    else  {
+        return MHD_flux(U_R, gam_hcr);
+    }
+}
+
+// Определяем HLLC поток F
+std::vector<double> HLLC_flux(const std::vector<double>& U_L, const std::vector<double>& U_R, const double &gam_hcr) {
+    /*          0      1      2      3    4   5   6   7
+     * state:  rho,  rho*u, rho*v, rho*w, e, Bx, Bz, By
+     */
+    double rho_L = U_L[0];
+    double u_L = U_L[1]/rho_L;
+    double v_L = U_L[2]/rho_L;
+    double w_L = U_L[3]/rho_L;
+    double e_L = U_L[4];
+    double Bx_L = U_L[5];
+    double By_L = U_L[6];
+    double Bz_L = U_L[7];
+    double p_L = pressure(gam_hcr, e_L, rho_L, u_L, v_L, w_L, Bx_L, By_L, Bz_L);
+
+    double rho_R = U_R[0];
+    double u_R = U_R[1]/rho_R;
+    double v_R = U_R[2]/rho_R;
+    double w_R = U_R[3]/rho_R;
+    double e_R = U_R[4];
+    double Bx_R = U_R[5];
+    double By_R = U_R[6];
+    double Bz_R = U_R[7];
+    double p_R = pressure(gam_hcr, e_R, rho_R, u_R, v_R, w_R, Bx_R, By_R, Bz_R);
+
+    //быстрые магнитозвуковые скорости на левом и правом концах
+    double cf_L = cfast(U_L, gam_hcr);
+    double cf_R = cfast(U_R, gam_hcr);
+
+    //скорость левого сигнала, рассчитываемая как минимальное значение скорости левого состояния (uL) и быстрой магнитозвуковой скорости (cfL).
+    double SL = std::min(u_L - cf_L, u_R - cf_R);//std::min(uL, uR) - std::max(cfL, cfR);//
+    // Скорость правого сигнала, рассчитываемая как максимальное значение скорости правого состояния (uR) и быстрой магнитозвуковой скорости (cfR).ы
+    double SR = std::max(u_L + cf_L, u_R + cf_R);
+
+    // Скорость середины разрыва
+    double SM = ((SR -u_R)*rho_R*u_R - (SL - u_L)*rho_L*u_L - p_R + p_L)/((SR -u_R)*rho_R - (SL - u_L)*rho_L);
+
+    double pT_star = ptotal(p_L, Bx_L, By_L, Bz_L) + rho_L*(SL - u_L)*(SM - u_L);
+
+    if (SL > 0) {
+        return MHD_flux(U_L, gam_hcr);
+    }
+    else if (SL <= 0 && SM >= 0) {
+        /*          0      1      2      3    4   5   6   7
+        * state:  rho,  rho*u, rho*v, rho*w, e, Bx, By, Bz
+        * */
+        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL*U_L - MHD_flux(U_R, gam_hcr) + MHD_flux(U_L, gam_hcr));
+        double rho_L_star = rho_L * (SL - u_L)/(SL-SM);
+        double u_L_star = SM;
+        double Bx_L_star = U_star[5];
+        double By_L_star = U_star[6];
+        double Bz_L_star = U_star[7];
+        //double v_L_star = U_star[1]/rho_L_star;
+        //double w_L_star = U_star[2]/rho_L_star;
+        double v_L_star = v_L + Bx_L*(By_L-By_L_star)/(rho_L*(SL-u_L));
+        double w_L_star = w_L + Bx_L*(Bz_L-Bz_L_star)/(rho_L*(SL-u_L));
+        double e_L_star = ((SL - u_L)*e_L - ptotal(p_L, Bx_L, By_L, Bz_L)*u_L + pT_star*SM + Bx_L *(u_L*Bx_L + v_L*By_L + w_L*Bz_L - u_L_star*Bx_L_star - v_L_star*By_L_star - w_L_star*Bz_L_star))/(SL-SM);
+        //MHD_flux(rho, u, v, w, e, Bx, By, Bz, pT, gam_hcr)
+        return MHD_flux(rho_L_star, u_L_star, v_L_star, w_L_star, e_L_star, Bx_L, By_L_star, Bz_L_star, pT_star, gam_hcr);
+    }
+    else if (SM <= 0 && SR >= 0){
+/*          0      1      2      3    4   5   6   7
+        * state:  rho,  rho*u, rho*v, rho*w, e, Bx, By, Bz
+        * */
+        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL*U_L - MHD_flux(U_R, gam_hcr) + MHD_flux(U_L, gam_hcr));
+        double rho_R_star = rho_R * (SR - u_R)/(SR-SM);
+        double u_R_star = SM;
+        double Bx_R_star = U_star[5];
+        double By_R_star = U_star[6];
+        double Bz_R_star = U_star[7];
+//        double v_R_star = U_star[1]/rho_R_star;
+//        double w_R_star = U_star[2]/rho_R_star;
+        double v_R_star = v_R + Bx_R*(By_R-By_R_star)/(rho_R*(SR-u_R));
+        double w_R_star = w_R + Bx_R*(Bz_R-Bz_R_star)/(rho_R*(SR-u_R));
+        double e_R_star = ((SR - u_R)*e_R - ptotal(p_R, Bx_R, By_R, Bz_R)*u_R + pT_star*SM + Bx_R *(u_R*Bx_R + v_R*By_R + w_R*Bz_R - u_R_star*Bx_R_star - v_R_star*By_R_star - w_R_star*Bz_R_star))/(SR-SM);
+        //MHD_flux(rho, u, v, w, e, Bx, By, Bz, pT, gam_hcr)
+        return MHD_flux(rho_R_star, u_R_star, v_R_star, w_R_star, e_R_star, Bx_R, By_R_star, Bz_R_star, pT_star, gam_hcr);
     }
     //if (SR < 0)
     else  {
@@ -284,7 +384,7 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
 
             // HLL-потоки
             for(int i = 0; i < num_space_steps; ++i){
-                fluxes[i] = HLL_flux(state_j[i], state_j[i+1], gam_hcr);
+                fluxes[i] = HLLC_flux(state_j[i], state_j[i+1], gam_hcr);
             }
 
             // Обход пространства
