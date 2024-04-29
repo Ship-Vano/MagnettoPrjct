@@ -3,4 +3,11 @@ project(MagnettoPrjct)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(MagnettoPrjct main.cpp)
+add_executable(MagnettoPrjct
+        main.cpp
+        LinOp.h
+        FileIO.h
+        MHDProblem.h
+        MHDProblem.cpp
+        MHDSolver.cpp
+        MHDSolver.h)
