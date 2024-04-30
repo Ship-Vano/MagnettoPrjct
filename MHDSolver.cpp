@@ -235,6 +235,155 @@ std::vector<double> HLLC_flux(const std::vector<double>& U_L, const std::vector<
     }
 }
 
+// Определяем HLLD поток F
+std::vector<double> HLLD_flux(const std::vector<double>& U_L, const std::vector<double>& U_R, const double &gam_hcr) {
+    /*          0      1      2      3    4   5   6   7
+     * state:  rho,  rho*u, rho*v, rho*w, e, Bx, Bz, By
+     */
+    double rho_L = U_L[0];
+    double u_L = U_L[1]/rho_L;
+    double v_L = U_L[2]/rho_L;
+    double w_L = U_L[3]/rho_L;
+    double e_L = U_L[4];
+    double Bx_L = U_L[5];
+    double By_L = U_L[6];
+    double Bz_L = U_L[7];
+    double p_L = pressure(gam_hcr, e_L, rho_L, u_L, v_L, w_L, Bx_L, By_L, Bz_L);
+    double pT_L = ptotal(p_L, Bx_L, By_L, Bz_L);
+
+    double rho_R = U_R[0];
+    double u_R = U_R[1]/rho_R;
+    double v_R = U_R[2]/rho_R;
+    double w_R = U_R[3]/rho_R;
+    double e_R = U_R[4];
+    double Bx_R = U_R[5];
+    double By_R = U_R[6];
+    double Bz_R = U_R[7];
+    double p_R = pressure(gam_hcr, e_R, rho_R, u_R, v_R, w_R, Bx_R, By_R, Bz_R);
+    double pT_R = ptotal(p_R, Bx_R, By_R, Bz_R);
+
+    double Bx = (Bx_L + Bx_R)/2;
+
+    //быстрые магнитозвуковые скорости на левом и правом концах
+    double cf_L = cfast(U_L, gam_hcr);
+    double cf_R = cfast(U_R, gam_hcr);
+
+    //скорость левого сигнала, рассчитываемая как минимальное значение скорости левого состояния (uL) и быстрой магнитозвуковой скорости (cfL).
+    //double SL = std::min(u_L - cf_L, u_R - cf_R);
+    double SL = std::min(u_L, u_R) - std::max(cf_L, cf_R);
+    // Скорость правого сигнала, рассчитываемая как максимальное значение скорости правого состояния (uR) и быстрой магнитозвуковой скорости (cfR).ы
+    //double SR = std::max(u_L + cf_L, u_R + cf_R);
+    double SR = std::max(u_L, u_R) + std::max(cf_L, cf_R);
+
+    double SR_m_uR = SR - u_R;
+    double SL_m_uL = SL - u_L;
+    double den_SM = SR_m_uR * rho_R - SL_m_uL * rho_L;
+
+    // Скорость середины разрыва
+    double SM = (SR_m_uR * rho_R * u_R - SL_m_uL * rho_L * u_L - pT_R + pT_L) / den_SM;
+
+    double SM_m_uR = SM - u_R;
+    double SM_m_uL = SM - u_L;
+
+    double rho_L_star = rho_L;
+    if(SL-SM != 0) {
+        rho_L_star = rho_L * SL_m_uL / (SL - SM);
+    }
+
+    double rho_R_star = rho_R;
+    if(SR-SM != 0){
+        rho_R_star = rho_R * SR_m_uR / (SR - SM);
+    }
+
+    double SL_star = SM - std::fabs(Bx)/std::sqrt(rho_L_star);
+    double SR_star = SM + std::fabs(Bx)/std::sqrt(rho_R_star);
+
+    double pT_star = (SR_m_uR * rho_R * pT_L - SL_m_uL * rho_L * pT_R + rho_L * rho_R * SR_m_uR * SL_m_uL * (u_R - u_L)) / den_SM;
+
+    // звёздочка слева
+    double u_L_star = u_L;
+    double pT_L_star = pT_L;
+    double v_L_star = v_L;
+    double w_L_star = w_L;
+    double By_L_star = 0.;
+    double Bz_L_star = 0.;
+    double denom_L = rho_L * SL_m_uL * (SL - SM) - Bx * Bx;
+    if(denom_L != 0.){
+        pT_L_star = pT_star;
+        u_L_star = SM;
+        v_L_star = v_L - Bx * By_L * SM_m_uL/denom_L;
+        w_L_star = w_L - Bx * Bz_L * SM_m_uL/denom_L;
+        double factor_L = rho_L * SL_m_uL * SL_m_uL - Bx * Bx;
+        By_L_star = By_L * factor_L/denom_L;
+        Bz_L_star = Bz_L * factor_L/denom_L;
+    }
+    double e_L_star = (SL_m_uL *e_L - pT_L*u_L + pT_star*SM + Bx*(u_L * Bx_L + v_L * By_L + w_L * Bz_L - u_L_star*Bx - v_L_star*By_L_star - w_L_star*Bz_L_star))/(SL-SM);
+
+    // звёздочка справа
+    double u_R_star = u_R;
+    double pT_R_star = pT_R;
+    double v_R_star = v_R;
+    double w_R_star = w_R;
+    double By_R_star = 0.;
+    double Bz_R_star = 0.;
+    double denom_R = rho_R * SR_m_uR * (SR - SM) - Bx * Bx;
+    if(denom_R != 0.){
+        pT_R_star = pT_star;
+        u_R_star = SM;
+        v_R_star = v_R - Bx * By_R * SM_m_uR/denom_R;
+        w_R_star = w_R - Bx * Bz_R * SM_m_uR/denom_R;
+        double factor_R = rho_R * SR_m_uR * SR_m_uR - Bx * Bx;
+        By_R_star = By_R * factor_R/denom_R;
+        Bz_R_star = Bz_R * factor_R/denom_R;
+    }
+    double e_R_star = (SR_m_uR *e_R - pT_R*u_R + pT_star*SM + Bx*(u_R * Bx_R + v_R * By_R + w_R * Bz_R - u_R_star*Bx - v_R_star*By_R_star - w_R_star*Bz_R_star))/(SR-SM);
+
+    if (SL > 0) {
+//!!!   //FL
+        return MHD_flux(U_L, gam_hcr);
+    }
+    else if (/*SL <= 0 &&*/ SL_star >= 0) {
+//!!!   //F*L
+        return MHD_flux(rho_L_star, u_L_star, v_L_star, w_L_star, e_L_star, Bx, By_L_star, Bz_L_star, pT_L_star, gam_hcr);
+    }
+    else if (/*SL_star <= 0 &&*/ SM >= 0) {
+//!!!   //F**L
+        double u_L_2star = SM;
+        double pT_L_2star = pT_L_star;
+        double rho_star_sum_of_sqrts = std::sqrt(rho_L_star)+ std::sqrt(rho_R_star);
+        double sign_Bx = signum(Bx_L);
+        double v_L_2star = (std::sqrt(rho_L_star)*v_L_star + std::sqrt(rho_R_star)*v_R_star + (By_R_star-By_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double w_L_2star = (std::sqrt(rho_L_star)*w_L_star + std::sqrt(rho_R_star)*w_R_star + (Bz_R_star-Bz_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double By_L_2star = (std::sqrt(rho_L_star)*By_R_star + std::sqrt(rho_R_star)*By_L_star + std::sqrt(rho_L_star*rho_R_star)*(v_R_star-v_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double Bz_L_2star = (std::sqrt(rho_L_star)*Bz_R_star + std::sqrt(rho_R_star)*Bz_L_star + std::sqrt(rho_L_star*rho_R_star)*(w_R_star-w_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double e_L_2star = e_L_star - std::sqrt(rho_L_star)*(u_L_star * Bx + v_L_star * By_L_star + w_L_star * Bz_L_star - u_L_2star * Bx - v_L_2star * By_L_2star - w_L_2star * Bz_L_2star)*sign_Bx;
+        return MHD_flux(rho_L_star, u_L_2star, v_L_2star, w_L_2star, e_L_2star, Bx, By_L_2star, Bz_L_2star, pT_L_2star, gam_hcr);
+    }
+    else if (/*SM <= 0 &&*/ SR_star >= 0){
+//!!!   //F**R
+        double u_R_2star = SM;
+        double pT_R_2star = pT_R_star;
+        double rho_star_sum_of_sqrts = std::sqrt(rho_L_star)+ std::sqrt(rho_R_star);
+        double sign_Bx = signum(Bx_L);
+        double v_R_2star = (std::sqrt(rho_L_star)*v_L_star + std::sqrt(rho_R_star)*v_R_star + (By_R_star-By_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double w_R_2star = (std::sqrt(rho_L_star)*w_L_star + std::sqrt(rho_R_star)*w_R_star + (Bz_R_star-Bz_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double By_R_2star = (std::sqrt(rho_L_star)*By_R_star + std::sqrt(rho_R_star)*By_L_star + std::sqrt(rho_L_star*rho_R_star)*(v_R_star-v_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double Bz_R_2star = (std::sqrt(rho_L_star)*Bz_R_star + std::sqrt(rho_R_star)*Bz_L_star + std::sqrt(rho_L_star*rho_R_star)*(w_R_star-w_L_star)*sign_Bx)/rho_star_sum_of_sqrts;
+        double e_R_2star = e_R_star + std::sqrt(rho_R_star)*(u_R_star * Bx + v_R_star * By_R_star + w_R_star * Bz_R_star - u_R_2star * Bx - v_R_2star * By_R_2star - w_R_2star * Bz_R_2star)*sign_Bx;
+        return MHD_flux(rho_R_star, u_R_2star, v_R_2star, w_R_2star, e_R_2star, Bx, By_R_2star, Bz_R_2star, pT_R_2star, gam_hcr);
+    }
+    else if (/*SR_star <= 0 &&*/ SR >= 0){
+//!!!   //F*R
+        return MHD_flux(rho_R_star, u_R_star, v_R_star, w_R_star, e_R_star, Bx, By_R_star, Bz_R_star, pT_R_star, gam_hcr);
+    }
+    //if (SR < 0)
+    else  {
+//!!!   //FR
+        return MHD_flux(U_R, gam_hcr);
+    }
+}
+
+
 /* Инициализация начального состояния системы (каждой точке пространства ставим в соотвествие величину начального отклонения)
  * args: problem
  * return: initial state
@@ -406,6 +555,88 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
         fpoints.close();
 
         std::cout << "LOG[INFO]: HLLC-calculation is completed." << std::endl;
+
+        return true;
+
+    } else {
+        std::cout << "log[ERROR]: Couldn't open or create a file." << std::endl;
+        return false;
+    }
+};
+
+bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
+
+    // Создание файла
+    std::string path = "./OutputData/" + filename;
+    std::ofstream fpoints(path);
+    std::cout << "log[INFO]: Starting HLLD Scheme..." << std::endl;
+    std::cout << "log[INFO]: Opening a file \"" << filename << "\" to write..." << std::endl;
+    if (fpoints.is_open())
+    {
+        // Физические параметры
+        double gam_hcr = problem.gam_hcr;
+        double x0 = problem.x0;    // начало отсчёта по пространству
+        double L = problem.L;      // характерный пространственный размер (длина струны)
+        double X = x0 + L;         // координата правого края
+        double t0 = problem.t0;    // время отсчёта
+        double T = problem.T;      // время окончания
+        double tau = problem.tau;  // шаг по времени
+        double h = problem.h;      // шаг по пространству
+        double gam_courant = problem.gam_courant;  // число Куранта
+
+        // Шаги по времени и пространству
+        int num_time_steps = problem.num_time_steps;
+        int num_space_steps = problem.num_space_steps;
+
+        double t_i = t0;
+        double x_i = x0;
+
+        std::vector<std::vector<double>> state_j = initializeState(problem);
+        std::vector<std::vector<double>> state_jp(state_j);
+        std::vector<std::vector<double>> fluxes(num_space_steps, std::vector<double>(8,0));
+
+        // Запись первого слоя в файл
+        fpoints << t_i << std::endl;
+        for (int i = 0; i <= num_space_steps; ++i)
+        {
+            writeVectorToFile(fpoints, state_j[i]);
+        }
+        fpoints << "--------" << std::endl;
+
+        // Эволюция системы во времени
+        for(int j = 1; j <= num_time_steps; ++j) {
+            t_i += tau;
+            //std::cout << t_i << std::endl;
+            // Граничные условия слева
+            state_jp[0] = problem.leftBoundaryFunction(t_i);
+
+            // Граничные условия справа
+            state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
+
+            // HLL-потоки
+            for(int i = 0; i < num_space_steps; ++i){
+                fluxes[i] = HLLD_flux(state_j[i], state_j[i+1], gam_hcr);
+            }
+
+            // Обход пространства
+            for (int i = 1; i < num_space_steps; ++i) {
+                x_i += h;
+                state_jp[i] = state_j[i] - tau/h * (fluxes[i]-fluxes[i-1]);
+            }
+            // Запись в файл
+            fpoints << t_i << std::endl;
+            for (int i = 0; i <= num_space_steps; ++i)
+            {
+                writeVectorToFile(fpoints, state_jp[i]);
+            }
+            fpoints << "--------" << std::endl;
+
+            // j  jp   -> jp j
+            state_j.swap(state_jp);
+        }
+        fpoints.close();
+
+        std::cout << "LOG[INFO]: HLLD-calculation is completed." << std::endl;
 
         return true;
 

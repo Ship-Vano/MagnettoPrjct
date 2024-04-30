@@ -15,4 +15,6 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename ="HLLSchem
 
 bool HLLCScheme(const MHDProblem &problem, const std::string &filename ="HLLCScheme");
 
+bool HLLDScheme(const MHDProblem &problem, const std::string &filename ="HLLDScheme");
+
 #endif //MAGNETTOPRJCT_MHDSOLVER_H
