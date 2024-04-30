@@ -10,4 +10,6 @@ add_executable(MagnettoPrjct
         MHDProblem.h
         MHDProblem.cpp
         MHDSolver.cpp
-        MHDSolver.h)
+        MHDSolver.h
+        ShockTube1D.cpp
+        ShockTube1D.h)
