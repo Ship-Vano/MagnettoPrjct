@@ -1,91 +1,51 @@
 #include <iostream>
 #include "MHDSolver.h"
+#include "ShockTube1D.h"
 
 int main() {
+
+    std::vector<double> BrioWu_L1{1., 0., 0., 0., 1., 0.75, 1., 0.};
+    std::vector<double> BrioWu_R1{0.125, 0., 0., 0., 0.1, 0.75, -1., 0.};
+                                  /*rho  u     v    w     p    Bx                             By                        Bz*/
+    std::vector<double> BrioWu_L2{1.08, 1.2, 0.01, 0.5, 0.95, 4./(std::sqrt(4.*M_PI)), 3.6/(std::sqrt(4.*M_PI)), 2./(std::sqrt(4.*M_PI))};
+    std::vector<double> BrioWu_R2{1., 0., 0., 0., 1., 4./(std::sqrt(4.*M_PI)), 4./(std::sqrt(4.*M_PI)), 2./(std::sqrt(4.*M_PI))};
 
     double gam_hcr = 5./3.;
     double x0 = -0.5;
     double X = 0.5;
     bool what_is_L = false;
     double t0 = 0.;
-    double T = 0.1;
+    double T = 0.2;
     double h = 0.0025;
     double tau = 0.00002;
-
-    std::function<std::vector<double>(double)> BrioWu1 = ([&](double x) {
-        if(x < 0.){
-            const double rhoL = 1.;
-            const double uL = 0.;
-            const double vL = 0.;
-            const double wL = 0.;
-            const double pL = 1.;
-            const double BxL = 0.75;
-            const double ByL = 1.;
-            const double BzL = 0.;
-            return state_from_primitive_vars(rhoL, uL, vL, wL, pL, BxL, ByL, BzL, gam_hcr);
-        }
-        else{
-            const double rhoR = 0.125;
-            const double uR = 0.;
-            const double vR = 0.;
-            const double wR = 0.;
-            const double pR = 0.1;
-            const double BxR = 0.75;
-            const double ByR = -1.;
-            const double BzR = 0.;
-            return state_from_primitive_vars(rhoR, uR, vR, wR, pR, BxR, ByR, BzR, gam_hcr);
-        }
-    });
-
-    std::function<std::vector<double>(double)> leftBound1 =([&](double t){
-        const double rhoL = 1.;
-        const double uL = 0.;
-        const double vL = 0.;
-        const double wL = 0.;
-        const double pL = 1.;
-        const double BxL = 0.75;
-        const double ByL = 1.;
-        const double BzL = 0.;
-        return state_from_primitive_vars(rhoL, uL, vL, wL, pL, BxL, ByL, BzL, gam_hcr);
-    });
-
-    std::function<std::vector<double>(double)> rightBound1 = ([&](double t){
-        const double rhoR = 0.125;
-        const double uR = 0.;
-        const double vR = 0.;
-        const double wR = 0.;
-        const double pR = 0.1;
-        const double BxR = 0.75;
-        const double ByR = -1.;
-        const double BzR = 0.;
-        return state_from_primitive_vars(rhoR, uR, vR, wR, pR, BxR, ByR, BzR, gam_hcr);
-    });
-
     MHDProblem problem1(gam_hcr, x0, X, t0, T, h, tau, what_is_L);
 
-    problem1.initStateFunc = BrioWu1;
 
-    problem1.leftBoundaryFunction = leftBound1;
+    ShockTube1D BrioWuTest = ShockTube1D(gam_hcr, BrioWu_L2, BrioWu_R2, (problem1.X+problem1.x0)/2);
 
-    problem1.rightBoundaryFunction = rightBound1;
+
+    problem1.initStateFunc = BrioWuTest.initDistrib;
+
+    problem1.leftBoundaryFunction = BrioWuTest.leftBound;
+
+    problem1.rightBoundaryFunction = BrioWuTest.rightBound;
 
     HLLScheme(problem1);
-    double h2 = 0.005;
-    double tau2 = 0.0002;
+
+    double h2 = 0.0025;
+    double tau2 = 0.00002;
     MHDProblem problem2(gam_hcr, x0, X, t0, T, h2, tau2, what_is_L);
-    problem2.initStateFunc = BrioWu1;
-    problem2.initStateFunc = BrioWu1;
-    problem2.leftBoundaryFunction = leftBound1;
-    problem2.rightBoundaryFunction = rightBound1;
+    problem2.initStateFunc = BrioWuTest.initDistrib;
+    problem2.leftBoundaryFunction = BrioWuTest.leftBound;
+    problem2.rightBoundaryFunction = BrioWuTest.rightBound;
     HLLCScheme(problem2);
 
     double h3 = 0.0025;
-    double tau3 = 0.0001 ;
+    double tau3 = 0.00002;
     MHDProblem problem3(gam_hcr, x0, X, t0, T, h3, tau3, what_is_L);
-    problem3.initStateFunc = BrioWu1;
-    problem3.initStateFunc = BrioWu1;
-    problem3.leftBoundaryFunction = leftBound1;
-    problem3.rightBoundaryFunction = rightBound1;
+    problem3.initStateFunc = BrioWuTest.initDistrib;
+    problem3.leftBoundaryFunction = BrioWuTest.leftBound;
+    problem3.rightBoundaryFunction = BrioWuTest.rightBound;
     HLLDScheme(problem3);
     return 0;
 }

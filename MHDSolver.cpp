@@ -197,29 +197,44 @@ std::vector<double> HLLC_flux(const std::vector<double>& U_L, const std::vector<
     // Скорость правого сигнала, рассчитываемая как максимальное значение скорости правого состояния (uR) и быстрой магнитозвуковой скорости (cfR).ы
     double SR = std::max(u_L + cf_L, u_R + cf_R);
 
-    // Скорость середины разрыва
-    double SM = ((SR -u_R)*rho_R*u_R - (SL - u_L)*rho_L*u_L - p_R + p_L)/((SR -u_R)*rho_R - (SL - u_L)*rho_L);
+    double SR_m_uR = SR - u_R;
+    double SL_m_uL = SL - u_L;
 
-    double pT_star = ptotal(p_L, Bx_L, By_L, Bz_L) + rho_L*(SL - u_L)*(SM - u_L);
+    /*          0      1      2      3    4   5   6   7
+     * state:  rho,  rho*u, rho*v, rho*w, e, Bx, By, Bz
+     * */
+    //std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL * U_L - F_R + F_L);
+
+    // Скорость середины разрыва
+    double SM = ((SR_m_uR)*rho_R*u_R - (SL_m_uL)*rho_L*u_L - p_R + p_L)/((SR_m_uR)*rho_R - (SL_m_uL)*rho_L);
+    //double SM = U_star[1]/U_star[0];
 
     if (SL > 0) {
         return MHD_flux(U_L, gam_hcr);
     }
     else if (SL <= 0 && SM >= 0) {
-        /*          0      1      2      3    4   5   6   7
-        * state:  rho,  rho*u, rho*v, rho*w, e, Bx, By, Bz
-        * */
-        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL*U_L - MHD_flux(U_R, gam_hcr) + MHD_flux(U_L, gam_hcr));
+        std::vector<double> F_L = MHD_flux(U_L, gam_hcr);
+        std::vector<double> F_R = MHD_flux(U_R, gam_hcr);
+        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL * U_L - F_R + F_L);
         double rho_L_star = rho_L * (SL - u_L)/(SL-SM);
+        //double rho_L_star = U_star[0];
         double u_L_star = SM;
         double Bx_L_star = U_star[5];
         double By_L_star = U_star[6];
         double Bz_L_star = U_star[7];
         //double v_L_star = U_star[1]/rho_L_star;
         //double w_L_star = U_star[2]/rho_L_star;
-        double v_L_star = v_L + Bx_L*(By_L-By_L_star)/(rho_L*(SL-u_L));
-        double w_L_star = w_L + Bx_L*(Bz_L-Bz_L_star)/(rho_L*(SL-u_L));
-        double e_L_star = ((SL - u_L)*e_L - ptotal(p_L, Bx_L, By_L, Bz_L)*u_L + pT_star*SM + Bx_L *(u_L*Bx_L + v_L*By_L + w_L*Bz_L - u_L_star*Bx_L_star - v_L_star*By_L_star - w_L_star*Bz_L_star))/(SL-SM);
+        double v_L_star = v_L + Bx_L*(By_L-By_L_star)/(rho_L*SL_m_uL);
+        double w_L_star = w_L + Bx_L*(Bz_L-Bz_L_star)/(rho_L*SL_m_uL);
+        if(Bx_L == 0){
+            By_L_star = By_L * SL_m_uL / (SL - SM);
+            Bz_L_star = Bz_L * SL_m_uL / (SL - SM);
+            v_L_star = v_L;
+            w_L_star = w_L;
+        }
+        double pT_L = ptotal(p_L, Bx_L, By_L, Bz_L);
+        double pT_star = pT_L + rho_L*SL_m_uL*(SM - u_L);
+        double e_L_star = (SL_m_uL*e_L - pT_L*u_L + pT_star*SM + Bx_L *(u_L*Bx_L + v_L*By_L + w_L*Bz_L - u_L_star*Bx_L_star - v_L_star*By_L_star - w_L_star*Bz_L_star))/(SL-SM);
         //MHD_flux(rho, u, v, w, e, Bx, By, Bz, pT, gam_hcr)
         return MHD_flux(rho_L_star, u_L_star, v_L_star, w_L_star, e_L_star, Bx_L, By_L_star, Bz_L_star, pT_star, gam_hcr);
     }
@@ -227,22 +242,34 @@ std::vector<double> HLLC_flux(const std::vector<double>& U_L, const std::vector<
 /*          0      1      2      3    4   5   6   7
         * state:  rho,  rho*u, rho*v, rho*w, e, Bx, By, Bz
         * */
-        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL*U_L - MHD_flux(U_R, gam_hcr) + MHD_flux(U_L, gam_hcr));
+        std::vector<double> F_L = MHD_flux(U_L, gam_hcr);
+        std::vector<double> F_R = MHD_flux(U_R, gam_hcr);
+        std::vector<double> U_star = 1/(SR-SL) * (SR * U_R - SL * U_L - F_R + F_L);
         double rho_R_star = rho_R * (SR - u_R)/(SR-SM);
+        //double rho_R_star = U_star[0];
         double u_R_star = SM;
         double Bx_R_star = U_star[5];
         double By_R_star = U_star[6];
         double Bz_R_star = U_star[7];
-//        double v_R_star = U_star[1]/rho_R_star;
-//        double w_R_star = U_star[2]/rho_R_star;
+        //double v_R_star = U_star[1]/rho_R_star;
+        //double w_R_star = U_star[2]/rho_R_star;
         double v_R_star = v_R + Bx_R*(By_R-By_R_star)/(rho_R*(SR-u_R));
         double w_R_star = w_R + Bx_R*(Bz_R-Bz_R_star)/(rho_R*(SR-u_R));
-        double e_R_star = ((SR - u_R)*e_R - ptotal(p_R, Bx_R, By_R, Bz_R)*u_R + pT_star*SM + Bx_R *(u_R*Bx_R + v_R*By_R + w_R*Bz_R - u_R_star*Bx_R_star - v_R_star*By_R_star - w_R_star*Bz_R_star))/(SR-SM);
+        if(Bx_R == 0){
+            By_R_star = By_R * SR_m_uR / (SR - SM);
+            Bz_R_star = Bz_R * SR_m_uR / (SR - SM);
+            v_R_star = v_R;
+            w_R_star = w_R;
+        }
+        double pT_R = ptotal(p_R, Bx_R, By_R, Bz_R);
+        double pT_star = pT_R + rho_R*SR_m_uR*(SM - u_R);
+        double e_R_star = (SR_m_uR*e_R - pT_R*u_R + pT_star*SM + Bx_R *(u_R*Bx_R + v_R*By_R + w_R*Bz_R - u_R_star*Bx_R_star - v_R_star*By_R_star - w_R_star*Bz_R_star))/(SR-SM);
         //MHD_flux(rho, u, v, w, e, Bx, By, Bz, pT, gam_hcr)
         return MHD_flux(rho_R_star, u_R_star, v_R_star, w_R_star, e_R_star, Bx_R, By_R_star, Bz_R_star, pT_star, gam_hcr);
     }
     //if (SR < 0)
     else  {
+        //return F_R;
         return MHD_flux(U_R, gam_hcr);
     }
 }
