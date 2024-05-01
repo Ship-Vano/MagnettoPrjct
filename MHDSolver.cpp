@@ -12,6 +12,18 @@ double pressure(const double &gam_hcr, const double &e, const double &rho, const
     return (gam_hcr - 1) * (e - 0.5 * rho * (u * u + v * v + w * w) - 0.5*(Bx * Bx + By * By + Bz * Bz));
 }
 
+double pressure(const std::vector<double> &U, const double &gam_hcr){
+    double rho = U[0];
+    double u = U[1]/rho;
+    double v = U[2]/rho;
+    double w = U[3]/rho;
+    double e = U[4];
+    double Bx = U[5];
+    double By = U[6];
+    double Bz = U[7];
+    return (gam_hcr - 1) * (e - 0.5 * rho * (u * u + v * v + w * w) - 0.5*(Bx * Bx + By * By + Bz * Bz));
+}
+
 // Энергия
 double energy(const double &gam_hcr, const double &p, const double &rho, const double &u, const double &v, const double &w, const double &Bx, const double &By, const double &Bz){
     return p/(gam_hcr-1) + 0.5*rho*(u * u + v * v + w * w) + 0.5 * (Bx * Bx + By * By + Bz * Bz);
@@ -435,7 +447,7 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
         fpoints << t_i << std::endl;
         for (int i = 0; i <= num_space_steps; ++i)
         {
-            writeVectorToFile(fpoints, state_j[i]);
+            writeVectorToFile(fpoints, state_j[i], pressure(state_j[i], gam_hcr));
         }
         fpoints << "--------" << std::endl;
 
@@ -463,7 +475,7 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
             fpoints << t_i << std::endl;
             for (int i = 0; i <= num_space_steps; ++i)
             {
-                writeVectorToFile(fpoints, state_jp[i]);
+                writeVectorToFile(fpoints, state_jp[i], pressure(state_jp[i], gam_hcr));
             }
             fpoints << "--------" << std::endl;
 
@@ -517,7 +529,7 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
         fpoints << t_i << std::endl;
         for (int i = 0; i <= num_space_steps; ++i)
         {
-            writeVectorToFile(fpoints, state_j[i]);
+            writeVectorToFile(fpoints, state_j[i], pressure(state_j[i], gam_hcr));
         }
         fpoints << "--------" << std::endl;
 
@@ -545,7 +557,7 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
             fpoints << t_i << std::endl;
             for (int i = 0; i <= num_space_steps; ++i)
             {
-                writeVectorToFile(fpoints, state_jp[i]);
+                writeVectorToFile(fpoints, state_jp[i], pressure(state_jp[i], gam_hcr));
             }
             fpoints << "--------" << std::endl;
 
@@ -599,7 +611,7 @@ bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
         fpoints << t_i << std::endl;
         for (int i = 0; i <= num_space_steps; ++i)
         {
-            writeVectorToFile(fpoints, state_j[i]);
+            writeVectorToFile(fpoints, state_j[i], pressure(state_j[i], gam_hcr));
         }
         fpoints << "--------" << std::endl;
 
@@ -627,7 +639,7 @@ bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
             fpoints << t_i << std::endl;
             for (int i = 0; i <= num_space_steps; ++i)
             {
-                writeVectorToFile(fpoints, state_jp[i]);
+                writeVectorToFile(fpoints, state_jp[i], pressure(state_jp[i], gam_hcr));
             }
             fpoints << "--------" << std::endl;
 

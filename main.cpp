@@ -69,7 +69,7 @@ int main() {
 
     problem1.rightBoundaryFunction = rightBound1;
 
-    //HLLScheme(problem1);
+    HLLScheme(problem1);
     double h2 = 0.005;
     double tau2 = 0.0002;
     MHDProblem problem2(gam_hcr, x0, X, t0, T, h2, tau2, what_is_L);
@@ -77,7 +77,7 @@ int main() {
     problem2.initStateFunc = BrioWu1;
     problem2.leftBoundaryFunction = leftBound1;
     problem2.rightBoundaryFunction = rightBound1;
-    //HLLCScheme(problem2);
+    HLLCScheme(problem2);
 
     double h3 = 0.0025;
     double tau3 = 0.0001 ;
