@@ -439,6 +439,20 @@ std::vector<std::vector<double>> initializeState(const MHDProblem &problem){
     return new_state;
 }
 
+double tau_from_cfl(const double& sigma, const double& h, const std::vector<std::vector<double>>& states, const int& num_space_steps, const double& gam_hcr){
+    double u = std::fabs(states[0][1]/states[0][0]);
+    double current_speed = u + cfast(states[0], gam_hcr);
+    double max_speed = current_speed;
+    for(int i = 1; i < num_space_steps; ++i){
+        u = std::fabs(states[i][1]/states[i][0]);
+        current_speed = u + cfast(states[i], gam_hcr);
+        if (current_speed > max_speed){
+            max_speed = current_speed;
+        }
+    }
+    return sigma * h / max_speed;
+}
+
 bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
 
     // Создание файла
@@ -478,15 +492,12 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
         }
         fpoints << "--------" << std::endl;
 
+        //tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
         // Эволюция системы во времени
-        for(int j = 1; j <= num_time_steps; ++j) {
+        while(t_i < T){
+        //for(int j = 1; j <= num_time_steps; ++j) {
+            tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
             t_i += tau;
-
-            // Граничные условия слева
-            state_jp[0] = problem.leftBoundaryFunction(t_i);
-
-            // Граничные условия справа
-            state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
 
             // HLL-потоки
             for(int i = 0; i < num_space_steps; ++i){
@@ -497,6 +508,21 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
             for (int i = 1; i < num_space_steps; ++i) {
                 x_i += h;
                 state_jp[i] = state_j[i] - tau/h * (fluxes[i]-fluxes[i-1]);
+            }
+            // Граничные условия слева
+            if(!problem.periodic_boundaries) {
+                state_jp[0] = problem.leftBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[0] = state_jp[num_space_steps-1];
+            }
+
+            // Граничные условия справа
+            if(!problem.periodic_boundaries) {
+                state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[num_space_steps] = state_jp[1];
             }
             // Запись в файл
             fpoints << t_i << std::endl;
@@ -560,15 +586,12 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
         }
         fpoints << "--------" << std::endl;
 
+        //tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
         // Эволюция системы во времени
-        for(int j = 1; j <= num_time_steps; ++j) {
+        while(t_i < T){
+        //for(int j = 1; j <= num_time_steps; ++j) {
+            tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
             t_i += tau;
-
-            // Граничные условия слева
-            state_jp[0] = problem.leftBoundaryFunction(t_i);
-
-            // Граничные условия справа
-            state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
 
             // HLL-потоки
             for(int i = 0; i < num_space_steps; ++i){
@@ -580,6 +603,23 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
                 x_i += h;
                 state_jp[i] = state_j[i] - tau/h * (fluxes[i]-fluxes[i-1]);
             }
+
+            // Граничные условия слева
+            if(!problem.periodic_boundaries) {
+                state_jp[0] = problem.leftBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[0] = state_jp[num_space_steps-1];
+            }
+
+            // Граничные условия справа
+            if(!problem.periodic_boundaries) {
+                state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[num_space_steps] = state_jp[1];
+            }
+
             // Запись в файл
             fpoints << t_i << std::endl;
             for (int i = 0; i <= num_space_steps; ++i)
@@ -642,17 +682,14 @@ bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
         }
         fpoints << "--------" << std::endl;
 
+        //tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
         // Эволюция системы во времени
-        for(int j = 1; j <= num_time_steps; ++j) {
+        while(t_i < T){
+        //for(int j = 1; j <= num_time_steps; ++j) {
+            tau = tau_from_cfl(gam_courant, h, state_j, num_space_steps, gam_hcr);
             t_i += tau;
-            //std::cout << t_i << std::endl;
-            // Граничные условия слева
-            state_jp[0] = problem.leftBoundaryFunction(t_i);
-
-            // Граничные условия справа
-            state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
-
-            // HLL-потоки
+            //std::cout << tau << std::endl;
+            // HLLD-потоки
             for(int i = 0; i < num_space_steps; ++i){
                 fluxes[i] = HLLD_flux(state_j[i], state_j[i+1], gam_hcr);
             }
@@ -662,6 +699,23 @@ bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
                 x_i += h;
                 state_jp[i] = state_j[i] - tau/h * (fluxes[i]-fluxes[i-1]);
             }
+
+            // Граничные условия слева
+            if(!problem.periodic_boundaries) {
+                state_jp[0] = problem.leftBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[0] = state_jp[num_space_steps-1];
+            }
+
+            // Граничные условия справа
+            if(!problem.periodic_boundaries) {
+                state_jp[num_space_steps] = problem.rightBoundaryFunction(t_i);
+            }
+            else{
+                state_jp[num_space_steps] = state_jp[1];
+            }
+
             // Запись в файл
             fpoints << t_i << std::endl;
             for (int i = 0; i <= num_space_steps; ++i)

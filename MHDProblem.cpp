@@ -4,7 +4,7 @@
 
 #include "MHDProblem.h"
 
-MHDProblem::MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, bool what_is_L_init) {
+MHDProblem::MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, double gam_courant_init, bool what_is_L_init) {
     gam_hcr = gam_hcr_init;
     x0 = x0_init;
     if(what_is_L_init){
@@ -20,8 +20,7 @@ MHDProblem::MHDProblem(double gam_hcr_init, double x0_init, double L_init, doubl
     h = h_init;
     tau = tau_init;
 
-    //TODO: исправить вычисление
-    gam_courant = fabs( tau / h);
+    gam_courant = gam_courant_init;
     if(gam_courant > 1)
         std::cout << "LOG[WARNING]: Courant number is greater than 1!!!" << std::endl;
 

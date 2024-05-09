@@ -11,6 +11,7 @@
 
 class MHDProblem {
 public:
+    bool periodic_boundaries = false;
     double gam_hcr; // heat capacity rate
     double x0;  // начало отсчёта по пространству (координата левого конца)
     double L;   // характерный пространственный рамзер (длина струны)
@@ -22,7 +23,7 @@ public:
     double gam_courant; // число Куранта
     int num_time_steps; // количество шагов по времени
     int num_space_steps; // количество шагов по пространству
-    MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, bool what_is_L_init);
+    MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, double gam_courant_init, bool what_is_L_init);
 
     // Начальное состояние системы
     std::function<std::vector<double>(double)> initStateFunc;
