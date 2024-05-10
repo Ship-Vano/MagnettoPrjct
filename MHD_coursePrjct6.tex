@@ -1,0 +1,244 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[russian]{babel}
+\usepackage[oglav,spisok,boldsect,eqwhole,figwhole,hyperref,hyperprint,remarks,greekit]{./style/fn2kursstyle}
+
+\graphicspath{{./style/}{./figures/}}
+
+\usepackage{multirow}
+\usepackage{supertabular}
+\usepackage{multicol}
+\usepackage{float}
+\usepackage{amsthm}
+%\usepackage{./style/mmacells}
+%\usepackage{./style/mma}
+
+% Параметры титульного листа
+\title{HLL, HLLC и HLLD схемы для решения задач магнитной гидродинамики}
+\author{И.\,П.~Шаманов}
+\supervisor{В.\,В.~Лукин}
+\group{ФН2-61Б}
+\date{2024}
+
+\begin{document}
+	
+	\maketitle
+	
+	\tableofcontents
+	
+	\newpage
+	
+	\section-{Введение}
+	 В~физике и~технике возникают проблемы, связанные с~необходимостью изучения движения сильно нагретых ионизированных жидкостей и~газов в~электромагнитом поле. Такие задачи ставят, например, астрофизика, аэродинамика больших скоростей и~управляемый термоядерный синтез. В~связи с~этим в~настоящее время одной из наиболее интенсивно развивающихся областей механики и~физики является магнитная гидродинамика (МГД), которая описывает новые механические эффекты и~открывает новые методы воздействия на движение электропроводящих жидкостей и~газов в~электромагнитном поле.
+	 
+	 Для описания магнитогидродинамической среды представлены базовые уравнения, непосредственно аналитическое исследование которых возможно лишь в ограниченном ряде случаев. Однако подобные точные решения позволяют получить лишь качественные особенности поведения объекта. В инженерных же приложениях одной из самой главных задач является получение точных количественных результатов. Поэтому возникает потребность в робастных численных методах для МГД-задач.
+	 
+	 В данной работе представлены 3 схемы решения проблем идеальной МГД: Хартена---Лакса---Лира (HLL), HLLC и HLLD. Отличительной особенностью, объединяющей данные методы, является уход от линеаризации поставленной задачи. Поэтому расчёты по схемам обладают высоким разрешением. 
+	 
+	
+	 \pagebreak
+	
+	\section{Постановка задачи}
+	Опишем идеальную плазму. Выберем декартову прямоугольную систему координат. Пусть объём $V$ (ограниченная область), окружённый поверхностью $S$ с внешней единичной нормалью $\bi{n}$, помещён в электромагнитное поле и содержит в себе ионизированный газ.  
+	
+	Для описания электромагнитного поля будем использовать уравнения Максвелла --- обобщение опытных фактов, представляющее фундаментальные постулаты --- в~дифференциальной форме. Будем использовать гауссову систему единиц, в которой для напряжённости магнитного поля $\bi{H}$ и магнитной индукции $\bi{B}$ выполнено $\bi{B} = \mu \bi{H}$. Для полностью ионизированной плазмы положим магнитную проницаемость $\mu = 1$. Система уравнений имеет вид \cite{Kulikovskiy}
+	\begin{equation}
+	\label{Maxwell}
+	\begin{cases}
+		\nabla \times \bi{B} = \dfrac{4\pi}{c}\bi{j} + \dfrac1c \dfrac{\partial \bi{E}}{\partial t}, \\[3mm]
+		\nabla \times \bi{E} =  -\dfrac1c \dfrac{\partial \bi{B}}{\partial t}, \\[3mm]
+		\nabla \cdot \bi{E} = 4\pi\rho_{e}, \\
+		\nabla \cdot \bi{B} = 0,
+	\end{cases}
+	\end{equation}
+	где $\bi{E}$ --- напряжённость электрического поля, $\bi{j}$ --- плотность электрического тока, $c$ --- скорость света в вакууме, $\rho_e$ --- плотность заряда.
+	
+	Для описания сплошной среды будем использовать лагранжев подход, в котором прослеживается изменение во времени величин в первоначально зафиксированном объёме. Рассмотрим подсистему, состоящую из уравнений сохранения массы, импульса и энергии в~присутствии электромагнитных сил. Общая форма таких уравнений 
+	\begin{equation}
+	\label{Movement}
+	\begin{cases}
+	\displaystyle	\dfrac{d}{dt} \int_V \rho dV = 0, \\[3mm]
+	\displaystyle	\dfrac{d}{dt} \int_V \rho\bi{v} dV = \oint_S \bi{p}_n dS + \int_V \bi{f} dV, \\[3mm]
+	\displaystyle \dfrac{d}{dt} \int_V \rho \left(\varepsilon + \frac{\bi{v}^2}{2}\right) dV = -\int_S q_n dS + \int_S \bi{p}_n \cdot \bi{v} dS + \int_V A dV,
+	\end{cases}
+	\end{equation}
+	где $\rho$ --- плотность среды, $\frac{d}{dt}$ --- субстанциональная производная, $\bi{v}$ --- скорость среды, $\varepsilon$ --- удельная внутренняя энергия, $\bi{p}_n$ --- плотность поверхностных сил, $\bi{f}$ --- плотность внешних объёмных сил, $q_n$ --- поток тепла через $S$, $A$ --- разность полного притока энергии к выделенному объёму и притока энергии за счёт потока тепла через его поверхность и работы поверхностных сил.
+	
+	Будем рассматривать только силы, действующие со стороны электромагнитного поля на среду, то есть силу Лоренца
+	\[
+	\bi{f} = \rho_e\bi{E} + \dfrac{1}{c}(\bi{j} \times \bi{B}).
+	\]
+	Из уравнений Максвелла \eqref{Maxwell} получим
+	\[
+		\bi{f} = - \dfrac{\partial \bi{g}}{\partial t} + \nabla \cdot \bi{\hat{T}},
+	\]
+	где $\bi{g} = \dfrac{1}{4\pi c}(\bi{E}\times\bi{B})$, $\bi{\hat{T}}: T_{ij} = \dfrac{1}{4\pi}(B_iB_j + E_iE_j)-\dfrac{1}{8\pi}(B^2 + E^2)\delta_{ij}$. \\[-0.5mm]
+	
+	Полный приток энергии, который приносится электромагнитным полем в единичный объём за единицу времени
+	\[
+	A = \bi{j} \cdot \bi{E}.
+	\]
+	
+	Введём тензор напряжений $\bi{\hat{P}}: \hat{P}_{ij} = p_{ij} = p_{ji}$, где $p_{ij}$ есть напряжение в среде в~направлении орта $\bi{e}_i$ на площадке с нормалью $\bi{e}_j$. Соответственно, введя вектор $\bi{p}_j = p_{ij}\bi{e}_{i}$, получим полную силу, действующую на единичный элемент площади $S$ с~нормалью $\bi{n}$
+	\[
+	\bi{p}_n = \bi{p}_j n_j.
+	\]
+	Если рассматривать течения идеального газа в отсутствии вязкости и теплопроводности, то
+	\[
+		\bi{\hat{P}} = -p \bi{\hat{I}},
+	\] 
+	где \bi{\hat{I}} --- единичный тензор.
+	
+	Далее применим формулу Остроградского---Гаусса к поверхностным интегралам, заменим субстанциональные производные $\frac{d}{dt}$ на эйлеровы частные производные $\frac{\partial}{\partial t}$ и~примем во внимание тот факт, что $V$ --- произвольный объём. Тогда систему уравнений \eqref{Movement} можно записать в форме законов сохранения
+		\begin{equation}
+		\label{Movement2}
+		\begin{cases}
+		\dfrac{\partial\rho}{\partial t} + \nabla \cdot (\rho \bi{v})   = 0, \\[3mm]
+		\dfrac{\partial}{\partial t}(\rho \bi{v} + \bi{g}) + \nabla\cdot\bi{\hat{\Pi}} = 0, \\[3mm]
+		\dfrac{\partial e}{\partial t} + \nabla\cdot\bi{S} = 0,
+		\end{cases}
+	\end{equation}
+	где $\bi{\hat{\Pi}}: \Pi_{ij} = \rho v_i v_j + p\delta_{ij} - T_{ij}$, $e = \rho(\varepsilon + \sfrac{\bi{v}^2}{2})+\sfrac{E^2+B^2}{8\pi}$, $\bi{S} = (\rho(\varepsilon + \sfrac{\bi{v}^2}{2})+ p)\bi{v} + \sfrac{c}{4\pi}(\bi{E}\times\bi{B})$.
+	
+	Используем закон Ома для плотности электрического тока в виде суммы плотности токов проводимости и конвективного
+	\[
+	\bi{j} = \sigma \left(\bi{E}+ \dfrac1c \bi{v}\times \bi{B}\right) + \rho_e\bi{v},
+	\]
+	где $\sigma$ есть коэффициент проводимости.
+	
+	Предположим \cite{Kulikovskiy}, что проводимость настолько велика, что выполнено
+	\[
+	\dfrac{1}{\sigma t_*} \ll 1, \phantom{xxx} \dfrac{v_*}{\sigma L} \ll 1,
+	\]
+	где $t_*$, $v_*$ и $L$ --- характерные время, скорость и длина. Тогда в первом уравнении системы \eqref{Maxwell} можно пренебречь членами $\sfrac{\partial \bi{E}}{\partial t}$ и $4\pi\rho_e\bi{v}$ по сравнению с $4\pi\sigma\bi{E}$. Исключим напряжённость электрического поля из системы \eqref{Maxwell}, \eqref{Movement2}
+	\[
+	\bi{E} = \dfrac1c \left(\dfrac{c^2}{4\pi\sigma}\nabla\times\bi{B} - \bi{v}\times\bi{B}\right).
+	\]
+	Тогда получим 
+	\[
+	\dfrac{\partial \bi{B}}{\partial t} = \nabla \times (\bi{v}\times\bi{B}) - \nabla \times (\dfrac{c^2}{4\pi\sigma} \nabla \times \bi{B}).
+	\]
+	Если магнитное число Рейнольдса $Re_m = \sfrac{4\pi\sigma v_* L}{c^2} \gg 1$, то пренебрегаем вторым членом и получаем
+	\[
+		\dfrac{\partial \bi{B}}{\partial t} = \nabla \times (\bi{v}\times\bi{B}).
+	\]
+	
+	Применив соотношение $\nabla \times ( \bi{v}\times\bi{B} ) = \nabla\cdot(\bi{B}\otimes\bi{v}-\bi{v}\otimes\bi{B})$, сведём систему \eqref{Maxwell} к уравнению Фарадея и уравнению отсутствия магнитного заряда:
+	\[
+	\begin{cases}
+		\dfrac{\partial \bi{B}}{\partial t} + \nabla \cdot (\bi{v}\otimes\bi{B}-\bi{B}\otimes\bi{v}) = 0, \\
+		\nabla\cdot\bi{B} = 0.
+	\end{cases}
+	\]
+	
+	Будем рассматривать нерелятивистский случай при $\sfrac{v_*^2}{c^2}\ll1$, поэтому токами смещения $\sfrac{1}{4\pi}\sfrac{\partial\bi{E}}{\partial t}$ и конвективными токами $\rho_e \bi{v}$ пренебрежём по сравнению с полным током $c\nabla\times\bi{B}/4\pi$, поэтому
+	\[
+	\bi{j} = \sigma \left(\bi{E}+ \dfrac1c \bi{v}\times \bi{B}\right),
+	\]
+	\[
+	\nabla\times\bi{B} = \dfrac{4\pi}{c}\bi{j}.
+	\]
+	
+	Отметим, что в поставленных предположениях $\bi{B}$ и $\bi{j}$ остаются неизменными в~любой инерциальной системе координат, так как электромагнитное преобразуются при смене неподвижной системы координат (переменные без штриха) на систему координат, движущуюся со скоростью $\bi{v}$ (переменные со штрихом) следующим образом:
+	\[
+		\bi{B}' = \bi{B}-\dfrac{1}{c}(\bi{v}\times\bi{E}),
+	\]
+	\[
+	\bi{j}' = \bi{j} - \rho_e \bi{v}.
+	\]
+	
+	Воспользуемся и формулой $(\bi{v}\times\bi{B})\times\bi{B} = -\bi{v}B^2 + \bi{B}(\bi{v}\cdot\bi{B})$.
+	\pagebreak
+	
+	Таким образом, итоговая система МГД-уравнений в дивергентной форме
+	\begin{equation}
+	\label{MHD-system}
+	 \begin{cases}
+	 	\dfrac{\partial\rho}{\partial t} + \nabla \cdot (\rho \bi{v})   = 0, \\[3mm]
+	 	\dfrac{\partial \rho \bi{v}}{\partial t} + \nabla\cdot\left[\rho\bi{v}\otimes\bi{v} + p_T \bi{\hat{I}} - \dfrac{\bi{B}\otimes\bi{B}}{4\pi}\right] = 0, \\[3mm]
+	 	\dfrac{\partial e}{\partial t} + \nabla\cdot \left[(e+p_T)\bi{v} - \dfrac{\bi{B}(\bi{v}\cdot\bi{B})}{4\pi}\right] = 0, \\[3mm]
+	 		\dfrac{\partial \bi{B}}{\partial t} + \nabla \cdot (\bi{v}\otimes\bi{B}-\bi{B}\otimes\bi{v}) = 0,
+	 \end{cases}
+	\end{equation} 
+	где $e = \rho(\varepsilon + \sfrac{\bi{v}^2}{2})+\sfrac{B^2}{8\pi}$ --- полная энергия единицы объёма газа, $p_T = p + \sfrac{B^2}{8\pi}$ --- полное давление.
+	
+	Заметим, что условие $\nabla \cdot \bi{B} =0$ выполнено, так как, применив оператор дивергенции к уравнению Фарадея, получим $\sfrac{\partial}{\partial t} (\nabla \cdot \bi{B}) = 0$. Поэтому, если при $t=0$: $\nabla\cdot\bi{B}=0$, то $\nabla\cdot\bi{B}\equiv0$.
+	
+	Далее будем рассматривать одномерный случай уравнений \eqref{MHD-system}. Обозначим компоненты векторов $\bi{v} = (u, v, w)^T$, $\bi{B} = (B_x, B_y, B_z)^T$. Запишем систему в векторном виде 
+	\begin{equation}
+	\label{vectorMHD}
+	\dfrac{\partial \bi{U}}{\partial t} + \dfrac{\partial \bi{F}}{\partial x} = \bi{0},
+	\end{equation}
+	приняв
+	\[
+	\bi{U} = \begin{pmatrix}\rho \\ \rho u \\ \rho v \\ \rho w \\ e \\ B_x \\ B_y \\ B_z \end{pmatrix},
+	\bi{F}=\begin{pmatrix} \rho u \\ 
+					\rho u^2 + p_T - \sfrac{B_x^2}{4\pi} \\[3mm] 
+					\rho uv - \sfrac{B_x B_y}{4\pi} \\[3mm] 
+					\rho uw - \sfrac{B_x B_z}{4\pi} \\[3mm]
+					(e+p_T)u - \sfrac{B_x }{4\pi}(\bi{v}\cdot\bi{B}) \\[3mm]
+					0\\
+					uB_y - vB_x \\[3mm]
+					uB_z - wB_x  
+			\end{pmatrix}.
+	\]
+	\pagebreak
+	
+	Для упрощения дальнейших выкладок перейдём в новую систему единиц, домножив компоненты вектора магнитной индукции на $\sqrt{4\pi}$. Заметим, что $B_x = const$. Получим следующую систему
+ 	\begin{equation}
+ 		\label{vectorMHD-2}
+ 		\dfrac{\partial \bi{U}}{\partial t} + \dfrac{\partial \bi{F}}{\partial x} = \bi{0},
+ 	\end{equation}
+ 	где 
+ 	\[
+ 	\bi{U} = \begin{pmatrix}\rho \\ \rho u \\ \rho v \\ \rho w \\ e \\ B_y \\ B_z \end{pmatrix},
+ 	\bi{F}=\begin{pmatrix} \rho u \\ 
+ 		\rho u^2 + p_T - B_x^2\\[3mm] 
+ 		\rho uv - B_x B_y \\[3mm] 
+ 		\rho uw - B_x B_z \\[3mm]
+ 		(e+p_T)u - B_x  (\bi{v}\cdot\bi{B}) \\[3mm]
+ 		uB_y - vB_x \\[3mm]
+ 		uB_z - wB_x  
+ 	\end{pmatrix}.
+ 	\]
+ 	
+ 	В качестве давления выберем $p=(\gamma-1)\left(e - \sfrac{1}{2}\rho\bi{v}^2 - \sfrac12 \bi{B}^2\right)$, где $\gamma$ --- показатель адиабаты. Тогда $p_T = p + \sfrac12 \bi{B}^2$.
+ 	
+ 	Собственные значения якобиана $A = \sfrac{\partial \bi{F}}{\partial \bi{U}}$ действительны:
+ 	\[
+ 	\lambda_{2,6} = u \mp c_a, \phantom{xx}\lambda_{1,7} = u \mp c_f,\phantom{xx} \lambda_{3,5} = u \mp c_s,\phantom{xx} \lambda_{4} = u,    
+ 	\]
+ 	где 
+ 	\[
+ 	c_a = \dfrac{|B_x|}{\sqrt{\rho}}, \phantom{xxx} c_{f,s} = \left\{
+ 			\dfrac{\gamma p + \bi{B}^2 \pm \sqrt{\left(\gamma p + \bi{B}^2\right)^2 - 4\gamma p B_x^2}}{2\rho}\right\}^{\sfrac12}.
+ 	\]
+ 	
+ 	Выполняются равенства
+ 	\[
+ 	\lambda_1 \le \lambda_2 \le \lambda_3 \le \lambda_4 \le \lambda_5 \le \lambda_6 \le \lambda_7,
+ 	\]
+ 	поэтому некоторые собственные значения могут совпадать в зависимости от направления и модуля вектора напряжённости магнитного поля.  Следовательно, МГД-уравнения не являются строго гиперболическими. Более того, как показали M. Brio и C. Wu (1988), вектор-функция потока $\bi{F}(\bi{U})$ не является выпуклой. Поэтому решение задачи Римана для МГД-системы может содержать в себе помимо обычных ударных волн и волн разрежения ещё и другие волны, например, составные и ударные волны сжатия.
+ 	
+ 	<!-- Дописать про условия Гюгонио-->
+ 	
+ 	\section{Решение задачи}
+ 	\subsection{Метод HLL}
+ 	\subsection{Метод HLLC}
+ 	\subsection{Метод HLLD}
+ 	
+ 	\section{Численные эксперименты}
+ 	
+	\section-{Заключение}
+	Таким образом, в ходе выполнения курсовой работы
+\begin{thebibliography}{9}
+	\bibitem{Kulikovskiy} А.\,Г. Куликовский, Г.\,А. Любимов. Магнитная гидродинамика. М.: Логос, 2005. --- 328 с.
+	\bibitem{Kulikovskiy et al} А.\,Г. Куликовский, Н.\,В. Погорелов, А.\,Ю. Семёнов. Математические вопросы численного решения гиперболических систем уравнений. М.: Наука. Физматлит, 2001. --- 608 с.
+	\bibitem{Lukin} М.\,П. Галанин, В.\,В. Лукин. Разностная схема для решения двумерных задач идеальной МГД на неструктурированных сетках. 2007. 29 с. Препр. Инст. прикл матем. им. М.\,В. Келдыша РАН №50.
+	\bibitem{Kusano} T. Miyoshi, K. Kusano. A multi-state HLL approximate Riemann solver for ideal magnetohydrodynamics. J. Comp. Phys. 208, 2005, pp. 315-344. 
+	\bibitem{Comparison} G. Mattia, A. Mignone. A comparison of approximate non-linear Riemann solvers for Relativistic MHD. MNRAS. 510, 2022, pp. 481-499. 
+\end{thebibliography}
+
+\end{document}
