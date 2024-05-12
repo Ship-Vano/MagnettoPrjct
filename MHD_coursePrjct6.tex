@@ -6,7 +6,7 @@
 \usepackage[oglav,spisok,boldsect,eqwhole,figwhole,hyperref,hyperprint,remarks,greekit]{./style/fn2kursstyle}
 
 \graphicspath{{./style/}{./figures/}}
-
+\usepackage{./style/freetikz}
 \usepackage{multirow}
 \usepackage{supertabular}
 \usepackage{multicol}
@@ -53,7 +53,7 @@
 		\nabla \cdot \bi{B} = 0,
 	\end{cases}
 	\end{equation}
-	где $\bi{E}$ --- напряжённость электрического поля, $\bi{j}$ --- плотность электрического тока, $c$ --- скорость света в вакууме, $\rho_e$ --- плотность заряда.
+	где $\bi{E}$ --- напряжённость электрического поля, $\bi{j}$ --- плотность электрического тока, $c$~--- скорость света в вакууме, $\rho_e$ --- плотность заряда.
 	
 	Для описания сплошной среды будем использовать лагранжев подход, в котором прослеживается изменение во времени величин в первоначально зафиксированном объёме. Рассмотрим подсистему, состоящую из уравнений сохранения массы, импульса и энергии в~присутствии электромагнитных сил. Общая форма таких уравнений 
 	\begin{equation}
@@ -222,23 +222,429 @@
  	\]
  	поэтому некоторые собственные значения могут совпадать в зависимости от направления и модуля вектора напряжённости магнитного поля.  Следовательно, МГД-уравнения не являются строго гиперболическими. Более того, как показали M. Brio и C. Wu (1988), вектор-функция потока $\bi{F}(\bi{U})$ не является выпуклой. Поэтому решение задачи Римана для МГД-системы может содержать в себе помимо обычных ударных волн и волн разрежения ещё и другие волны, например, составные и ударные волны сжатия.
  	
- 	<!-- Дописать про условия Гюгонио-->
- 	
  	\section{Решение задачи}
  	\subsection{Метод HLL}
+ 	
+ 	Проинтегрируем уравнение  \eqref{vectorMHD-2} по области $(x_{i-1},x_{i})$: $x_{i}-x_{i-1}=h$, $i=\overline{1,n}$%, положив, что каждая компонента вектор-функций $\bi{U}$ и $\bi{F}$ является постоянной на $(x_{i-1},x_{i})$%
+ 	\[
+ 		\displaystyle \int_{x_{i-1}}^{x_i} \left(\dfrac{\partial \bi{U}}{\partial t}+\dfrac{\partial \bi{F}}{\partial x}\right)dx = 0;
+ 	\]
+ 	\[
+ 		\dfrac{\partial }{\partial t}\dfrac1h\displaystyle \int_{x_{i-1}}^{x_i} \bi{U}dx +
+ 		 \dfrac1h \left(\bi{F}|_{x_i}-\bi{F}|_{x_{i-1}}\right)= 0.
+ 	\]
+ 	
+ 	Далее будем рассматривать усреднённые значения $\langle\bi{U}\rangle_i = \sfrac1h \displaystyle\int_{x_{i-1}}^{x_i}\bi{U}dx$ или примем, что компоненты $\bi{U}$ являются кусочно-постоянными на $(x_{i-1},x_{i})$, $i=\overline{1,n}$: 
+ 	\begin{equation}
+ 		\label{afterxint}
+ 		\dfrac{\partial }{\partial t}\displaystyle \bi{U}_i +
+ 	\dfrac1h \left(\bi{F}|_{x_i}-\bi{F}|_{x_{i-1}}\right)= 0.
+ 	\end{equation}
+ 
+ 	Проинтегрируем \eqref{afterxint} по времени $(t_j,t_{j+1})$: $t_{j+1}-t_{j}=\tau$
+ 	\[
+ 	\displaystyle\int_{t_j}^{t_{j+1}}\dfrac{\partial }{\partial t}\bi{U}_i dt +  \dfrac1h	\displaystyle\int_{t_j}^{t_{j+1}}\left(\bi{F}|_{x_i}-\bi{F}|_{x_{i-1}}\right)dt = 0; 
+ 	\]
+ 	\[
+ 	\dfrac{\bi{U}^{j+1}_i-\bi{U}^{j}_i}{\tau} + \dfrac1h \left[
+ 	\dfrac1\tau \displaystyle\int_{t_j}^{t_{j+1}}\bi{F}|_{x_i}dt - \dfrac1\tau \displaystyle\int_{t_j}^{t_{j+1}}\bi{F}|_{x_{i-1}}dt
+ 	\right]=0.
+ 	\]
+ 	
+ 	Обозначим $\tilde{\bi{F}}(\bi{U}_i,\bi{U}_{i+1}) = \dfrac1\tau \displaystyle\int_{t_j}^{t_{j+1}}\bi{F}|_{x_i}dt$, тогда общий вид для разностных схем
+ 	\[
+ 	\dfrac{\bi{U}^{j+1}_i-\bi{U}^{j}_i}{\tau} + \dfrac1h \left[\tilde{\bi{F}}(\bi{U}_i,\bi{U}_{i+1}) -\tilde{\bi{F}}(\bi{U}_{i-1},\bi{U}_{i})\right]=0.
+ 	\]
+ Остаётся лишь предложить способы вычисления  $\tilde{\bi{F}}(\bi{U}_i,\bi{U}_{i+1})$ для перехода к явной схеме. Метод Хартена---Лакса---ван Лира предлагает рассмотрение среднего промежуточного состояния между самой быстрой и самой медленной магнитозвуковыми волнами. %В силу структуры собственных значений матрицы $A$ выберем наименьшую и~наибольшую скорости волн и введём для них обозначения: $S_{L}=\lambda_{1}$, $S_{R}=\lambda_{7}$.% 
+ 
+ 	 Обозначим $\bi{U}_L = \bi{U}_{i-1}^{j}$, $\bi{U}_R = \bi{U}_{i}^{j}$. Пусть на границе состояний $\bi{U}_L$ и $\bi{U}_R$ минимальная скорость магнитозвуковых волн отрицательна, а максимальная --- положительна:
+ 	 \[S_L = \min[\lambda_1(\bi{U}_L),\lambda_1(\bi{U}_R)]<0,\]
+ 	 \[S_R = \max[\lambda_7(\bi{U}_L),\lambda_7(\bi{U}_R)]>0,\] то есть выполнен случай для характеристик, показанный на рис.~1.
+ 	%%%
+ 	\begin{figure}[H]
+ 		\centering
+ 	\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+ 	\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+ 		%uncomment if require: \path (0,310); %set diagram left start at 0, and has height of 310
+ 		%Shape: Axis 2D [id:dp8901669070898124] 
+ 		\draw  (165,226.1) -- (530.2,226.1)(348.2,60) -- (348.2,258.1) (523.2,221.1) -- (530.2,226.1) -- (523.2,231.1) (343.2,67) -- (348.2,60) -- (353.2,67)  ;
+ 		%Straight Lines [id:da1741773609207251] 
+ 		\draw    (210.4,85.1) -- (348.2,226.1) ;
+ 		%Straight Lines [id:da5957105970508267] 
+ 		\draw    (486.4,86.1) -- (348.2,226.1) ;
+ 		%Straight Lines [id:da07497028391518623] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (211.4,228.1) ;
+ 		%Straight Lines [id:da15037888620942863] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (486.4,86.1) ;
+ 		%Straight Lines [id:da6121545998539613] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (486.4,86.1) -- (487.4,225.1) ;
+ 		
+ 		% Text Node
+ 		\draw (212,65) node [anchor=north west][inner sep=0.75pt]    {$S_{L} =\frac{x}{t}$};
+ 		% Text Node
+ 		\draw (432,65) node [anchor=north west][inner sep=0.75pt]    {$S_{R} =\frac{x}{t}$};
+ 		% Text Node
+ 		\draw (517,239.4) node [anchor=north west][inner sep=0.75pt]    {$x$};
+ 		% Text Node
+ 		\draw (358,54.4) node [anchor=north west][inner sep=0.75pt]    {$t$};
+ 		% Text Node
+ 		\draw (235,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{L}$};
+ 		% Text Node
+ 		\draw (440,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{R}$};
+ 		% Text Node
+ 		\draw (355,101.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{*}$};	
+ 	\end{tikzpicture}
+ 	\caption{Схема Риманова веера с одним промежуточным состоянием}
+ \end{figure}
+ 	%%%
+ 	
+ 	Промежуточное состояние можно найти, проинтегрировав уравнение \eqref{vectorMHD-2} по области $(\Delta t S_L,\Delta t S_R)\times(0,\Delta t)$:
+ 	\[
+ 	\bi{U}_* = \dfrac{S_R\bi{U}_R -S_L\bi{U}_L - \tilde{\bi{F}}_R + \tilde{\bi{F}}_L}{S_R-S_L}.
+ 	\]
+ 	
+ 	На разрывах выполнены соотношения:
+ 	\[
+ 	\begin{cases}
+ 		S_L(\bi{U}_L - \bi{U}_*) = \tilde{\bi{F}}_L - \tilde{\bi{F}}_*,\\
+ 		S_R(\bi{U}_R - \bi{U}_*) = \tilde{\bi{F}}_R - \tilde{\bi{F}}_*.
+ 	\end{cases}
+ 	\]
+ 	Следовательно, можно найти выражение для $\tilde{\bi{F}}_*$:
+ 	\[
+ 		\tilde{\bi{F}}_* = \dfrac{S_R\tilde{\bi{F}}_L - S_L\tilde{\bi{F}}_R + S_RS_L(\bi{U}_R-\bi{U}_L)}{S_R-S_L}.
+ 	\]
+ 	
+ 	В случае же совпадения знаков скоростей магнитозвуковых волн необходимо выбрать восходящий поток. Таким образом, HLL-метод заключается в следующем:
+ 	\[
+ 	\tilde{\bi{F}}_{HLL} = 
+ 		\begin{cases}
+ 		\tilde{\bi{F}}_{L}, \phantom{xxx} S_L > 0, \\
+ 			\tilde{\bi{F}}_{*}, \phantom{xxx} S_L \le 0 \le S_R, \\
+ 			\tilde{\bi{F}}_{R}, \phantom{xxx} S_R > 0.
+ 		\end{cases}
+ 	\]
+ 	
+ 	Данный метод учитывает два основных разрыва, которые описывают распространение сильных особенностей типа ударных волн, и не рассматривает разрывы типа контактных или тангенциальных. 
  	\subsection{Метод HLLC}
+ 	
+ 	Развитием подхода HLL является схема HLLC (C - contact), учитывающая контактный (тангенциальный) разрыв, скорость которого вычисляется из решения задачи Римана в рамках ,,звукового'' приближения. 
+ 	
+ 	Предположим, что состояние $\bi{U}_*$ разделяется на два состояния $\bi{U}_{*_L}$ и  $\bi{U}_{*_R}$ контактной волной, движущейся со постоянной скоростью $S_M = u_L^* = u_R^*$.  
+ 	%%
+ 	\begin{figure}[H]
+ 		\centering
+ 	\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+ 	\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+ 		%uncomment if require: \path (0,310); %set diagram left start at 0, and has height of 310
+ 		%Shape: Axis 2D [id:dp8901669070898124] 
+ 		\draw  (165,226.1) -- (530.2,226.1)(348.2,60) -- (348.2,258.1) (523.2,221.1) -- (530.2,226.1) -- (523.2,231.1) (343.2,67) -- (348.2,60) -- (353.2,67)  ;
+ 		%Straight Lines [id:da1741773609207251] 
+ 		\draw    (210.4,85.1) -- (348.2,226.1) ;
+ 		%Straight Lines [id:da5957105970508267] 
+ 		\draw    (486.4,86.1) -- (348.2,226.1) ;
+ 		%Straight Lines [id:da07497028391518623] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (211.4,228.1) ;
+ 		%Straight Lines [id:da15037888620942863] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (486.4,86.1) ;
+ 		%Straight Lines [id:da6121545998539613] 
+ 		\draw  [dash pattern={on 0.84pt off 2.51pt}]  (486.4,86.1) -- (487.4,225.1) ;
+ 		%Straight Lines [id:da687024001594329] 
+ 		\draw    (394.2,84.1) -- (348.2,226.1) ;
+ 		
+ 		% Text Node
+ 		\draw (205,65) node [anchor=north west][inner sep=0.75pt]    {$S_{L} =\frac{x}{t}$};
+ 		% Text Node
+ 		\draw (464,65) node [anchor=north west][inner sep=0.75pt]    {$S_{R} =\frac{x}{t}$};
+ 		% Text Node
+ 		\draw (517,239.4) node [anchor=north west][inner sep=0.75pt]    {$x$};
+ 		% Text Node
+ 		\draw (358,54.4) node [anchor=north west][inner sep=0.75pt]    {$t$};
+ 		% Text Node
+ 		\draw (235,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{L}$};
+ 		% Text Node
+ 		\draw (440,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{R}$};
+ 		% Text Node
+ 		\draw (295,105.4) node [anchor=north west][inner sep=0.75pt]   {$\bi{U}_{*_L}$};
+ 		% Text Node
+ 		\draw (401,106.4) node [anchor=north west][inner sep=0.75pt]   {$\bi{U}_{*_R}$};
+ 		% Text Node
+ 		\draw (384,65) node [anchor=north west][inner sep=0.75pt]    {$S_{M} =\frac{x}{t}$};
+ 	\end{tikzpicture}
+ 		\caption{Схема Риманова веера с двумя промежуточными состояниями}
+ \end{figure}
+ 	%%
+ 	
+ 	Скорость контактной волны предлагается вычислять как $u^*$ состояния $\bi{U}_*$ в HLL, то есть
+ 	\[
+ 	S_M = \dfrac{(\rho u)^*}{\rho^*} = 
+ 	\dfrac{(S_R - u_R)\rho_Ru_R - (S_L - u_L)\rho_Lu_L - p_R +p_L}{(S_R - u_R)\rho_R-(S_L - u_L)\rho_L}.
+ 	\]
+ 	Далее, пользуясь условиями разрыва $S_\alpha\bi{U}_{*_\alpha} - \tilde{\bi{F}}_{*_\alpha} = S_\alpha\bi{U}_{\alpha} - \tilde{\bi{F}}_{\alpha}$, $\alpha\in\{L,R\}$, находим компоненты промежуточных состояний. 
+ 	
+ 	Однако в случае МГД-задач необходимо сделать дополнительные уточнения. Во-первых, нужно учитывать полное давление, которое должно быть непрерывным на контактной волне
+ 	\[
+ 	p_T^* = p_{T_L} + \rho_L(S_L-u_L)(S_M-u_L) = p_{T_R} + \rho_R(S_R-u_R)(S_M-u_R).
+ 	\]
+ 	Во-вторых, если компонента $B_x \not= 0$, промежуточные состояния $\bi{U}_{*_L}$ и $\bi{U}_{*_R}$ не согласуются c условием скачка на контактном разрыве, в котором тангенциальные составляющие скорости и магнитного поля должны быть непрерывными. В этом случае они заменяются средним значением HLL $\bi{U}_*$.
+ 	В-третьих, в данной работе был использован HLLC-L метод, который делает попытку исключить возникающие побочные осциляции, заменяя промежуточные скорости на
+ 	\[
+ 	v^*_{\alpha} = v_\alpha + \dfrac{B_x(B_{y_\alpha}-B_y^*)}{\rho_\alpha(S_\alpha-u_\alpha)}, \phantom{xxx}
+ 	w^*_{\alpha} = w_\alpha + \dfrac{B_x(B_{z_\alpha}-B_z^*)}{\rho_\alpha(S_\alpha-u_\alpha)}, \phantom{xxx}\alpha\in\{L,R\}.
+ 	\]
+ 	
+ 	Таким образом, в HLLС-методе поток вычисляется по следующей схеме:
+ 	\[
+ 	\tilde{\bi{F}}_{HLLC} = 
+ 	\begin{cases}
+ 		\tilde{\bi{F}}_{L}, \phantom{xxx} S_L > 0, \\
+ 		\tilde{\bi{F}}_{*_L}, \phantom{xxx} S_L \le 0 \le S_M, \\
+ 		\tilde{\bi{F}}_{*_R}, \phantom{xxx} S_M \le 0 \le S_R, \\
+ 		\tilde{\bi{F}}_{R}, \phantom{xxx} S_R > 0.
+ 	\end{cases}
+ 	\]
  	\subsection{Метод HLLD}
  	
- 	\section{Численные эксперименты}
+ 	Как было отмечено ранее, при решении МГД-задач методом HLLC могут возникать нефизичекие осцилляции решения, вызванные несогласованностью условий разрыва. Поэтому была предложена схема HLLD , основанная на рассмотрении четырёх промежуточных состояний $\bi{U}_{*_L}$,$\bi{U}_{**_L}$,$\bi{U}_{**_R}$, $\bi{U}_{*_R}$ на которые состояние $\bi{U}_*$ внутри Риманова веера делят энтропийная волна $S_M$ и две альфвеновские волны $S_L^*$ и $S_R^*$ \cite{Kusano}.
  	
+ 	\begin{figure}[H]
+ 		\centering
+ 		\tikzset{every picture/.style={line width=0.75pt}} %set default line width to 0.75pt        
+ 		
+ 		\begin{tikzpicture}[x=0.75pt,y=0.75pt,yscale=-1,xscale=1]
+ 			%uncomment if require: \path (0,310); %set diagram left start at 0, and has height of 310
+ 			
+ 			%Shape: Axis 2D [id:dp8901669070898124] 
+ 			\draw  (165,226.1) -- (530.2,226.1)(348.2,60) -- (348.2,258.1) (523.2,221.1) -- (530.2,226.1) -- (523.2,231.1) (343.2,67) -- (348.2,60) -- (353.2,67)  ;
+ 			%Straight Lines [id:da1741773609207251] 
+ 			\draw    (210.4,85.1) -- (348.2,226.1) ;
+ 			%Straight Lines [id:da5957105970508267] 
+ 			\draw    (486.4,86.1) -- (348.2,226.1) ;
+ 			%Straight Lines [id:da07497028391518623] 
+ 			\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (211.4,228.1) ;
+ 			%Straight Lines [id:da15037888620942863] 
+ 			\draw  [dash pattern={on 0.84pt off 2.51pt}]  (210.4,85.1) -- (486.4,86.1) ;
+ 			%Straight Lines [id:da6121545998539613] 
+ 			\draw  [dash pattern={on 0.84pt off 2.51pt}]  (486.4,86.1) -- (487.4,225.1) ;
+ 			%Straight Lines [id:da687024001594329] 
+ 			\draw    (407.2,85.1) -- (348.2,226.1) ;
+ 			%Straight Lines [id:da42129148907773595] 
+ 			\draw    (293.2,86.1) -- (348.2,226.1) ;
+ 			%Straight Lines [id:da842465472685672] 
+ 			\draw    (363.2,83.1) -- (348.2,226.1) ;
+ 			
+ 			% Text Node
+ 			\draw (186,66.4) node [anchor=north west][inner sep=0.75pt]    {$S_{L}$};
+ 			% Text Node
+ 			\draw (484,62.4) node [anchor=north west][inner sep=0.75pt]    {$S_{R}$};
+ 			% Text Node
+ 			\draw (517,239.4) node [anchor=north west][inner sep=0.75pt]    {$x$};
+ 			% Text Node
+ 			\draw (358,54.4) node [anchor=north west][inner sep=0.75pt]    {$t$};
+ 			% Text Node
+ 			\draw (235,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{L}$};
+ 			% Text Node
+ 			\draw (440,174.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{R}$};
+ 			% Text Node
+ 			\draw (274,110.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{**_{L}}$};
+ 			% Text Node
+ 			\draw (420,98.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{*_{R}}$};
+ 			% Text Node
+ 			\draw (372,63.4) node [anchor=north west][inner sep=0.75pt]    {$S_{M}$};
+ 			% Text Node
+ 			\draw (411,60.4) node [anchor=north west][inner sep=0.75pt]    {$S_{R}^{*}$};
+ 			% Text Node
+ 			\draw (285,57.4) node [anchor=north west][inner sep=0.75pt]    {$S_{L}^{*}$};
+ 			% Text Node
+ 			\draw (362,93.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{**_{R}}$};
+ 			% Text Node
+ 			\draw (313,98.4) node [anchor=north west][inner sep=0.75pt]    {$\bi{U}_{**_{L}}$};
+ 		\end{tikzpicture}
+ 			\caption{Схема Риманова веера с четырьмя промежуточными состояниями}
+ 	\end{figure}
+ 	
+ 	Как и в HLLC, $S_M$ вычисляется как $HLL$-среднее, однако вместо давлений нужно учесть полные давления:
+ 	\[
+ 		S_M = 
+ 	\dfrac{(S_R - u_R)\rho_Ru_R - (S_L - u_L)\rho_Lu_L - p_{T_R} +p_{T_L}}{(S_R - u_R)\rho_R-(S_L - u_L)\rho_L}.
+ 	\]
+ 	Нормальная составляющая скорости постоянна: $u_L^* = u_L^{**} = u_R^{**} = u_R^* = S_M$. Вычислим и среднее полное давление промежуточных состояний:
+ 	\[
+ 	p_T^* = \dfrac{(S_R-u_R)\rho_Rp_{T_L} - (S_L-u_L)\rho_Lp_{T_R} +\rho_L\rho_R(S_R-u_R)(S_L-u_L)(u_R-u_L) }{(S_R-u_R)\rho_R-(S_L-u_L)\rho_L}.
+ 	\]
+ 	Далее, пользуясь условиями разрыва $S_\alpha\bi{U}_{*_\alpha} - \tilde{\bi{F}}_{*_\alpha} = S_\alpha\bi{U}_{\alpha} - \tilde{\bi{F}}_{\alpha}$, $\alpha\in\{L,R\}$, находим компоненты промежуточных состояний:
+ 	\[
+ 	\rho^*_\alpha = \rho_\alpha\dfrac{S_\alpha-u_\alpha}{S_\alpha-S_M},
+ 	\]
+ 	\[
+ 	v_\alpha^* = v_\alpha - B_xB_{y_\alpha}\dfrac{ S_M - u_\alpha }{ \rho_\alpha(S_\alpha -u_\alpha)(S_\alpha-S_M) - B_x^2 },
+ 	\]
+ 	\[
+ 	w_\alpha^* = w_\alpha - B_xB_{z_\alpha}\dfrac{ S_M - u_\alpha }{ \rho_\alpha(S_\alpha -u_\alpha)(S_\alpha-S_M) - B_x^2 },
+ 	\]
+ 	\[
+ 	B_{y_\alpha}^* = B_{y_\alpha} \dfrac{ \rho_\alpha(S_\alpha-u_\alpha)^2-B_x^2 }{\rho_\alpha(S_\alpha -u_\alpha)(S_\alpha-S_M) - B_x^2 },
+ 	\]
+ 		\[
+ 	B_{z_\alpha}^* = B_{z_\alpha} \dfrac{ \rho_\alpha(S_\alpha-u_\alpha)^2-B_x^2 }{\rho_\alpha(S_\alpha -u_\alpha)(S_\alpha-S_M) - B_x^2 },
+ 	\]
+ 	\[
+ 	e_\alpha^* = \dfrac{ (S_\alpha-u_\alpha)e_\alpha - p_{T_\alpha}u_\alpha + p_T^*S_M + B_x(\bi{v}_\alpha \cdot \bi{B}_\alpha - \bi{v}_\alpha^* \cdot \bi{B}_\alpha^* ) }{S_\alpha-S_M}.
+ 	\]
+ 	Стоит отметить, что при $S_M = u_\alpha$, $S_\alpha = u_\alpha \pm c_{f_\alpha}$, $B_{y_\alpha}=B_{z_\alpha} = 0$ и $B_x^2 \ge \gamma p_\alpha$ могут возникать операции деления на ноль. В таких случаях нет разрыва вдоль характеристики $S_\alpha = x/t$, и следует положить
+ 	\[
+ 	v_\alpha^* = v_\alpha, \phantom{xx} w_\alpha^* = w_\alpha, \phantom{xx} B_{y_\alpha}^*=B_{z_\alpha}^* = 0, \phantom{xx} \rho_\alpha^* = \rho_\alpha, \phantom{xx} u_\alpha^* = u_\alpha, \phantom{xx} p_{T_\alpha}^* = p_{T_\alpha}.
+ 	\]
+ 	
+ 	Далее рассмотрим внутренние промежуточные состояния $\bi{U}_{**_\alpha}$:
+ 	\[
+ 	\rho_\alpha^{**} = \rho_\alpha^{*}, \phantom{xx} p_{T_\alpha}^{**} = p_{T_\alpha}^{*}.
+ 	\]
+ 	Скорости распространения альфвеновских волн:
+ 	\[
+ 	S_L^* = S_M - \dfrac{|B_x|}{\sqrt{\rho_L^*}}, \phantom{xxx} S_R^* = S_M + \dfrac{|B_x|}{\sqrt{\rho_R^*}}.
+ 	\]
+ 	Из условий на разрыве получаем $v_L^{**} = v_R^{**} \equiv v^{**}$, $w_L^{**} = w_R^{**} \equiv w^{**}$, $B_{y_L}^{**} = B_{y_R}^{**} \equiv B_{y}^{**}$, $B_{z_L}^{**} = B_{z_R}^{**} \equiv B_{z}^{**}$. Далее, из условия
+ 	\[
+ 	(S_R-S_R^*)\bi{U}_{*_R} + (S_R^*-S_M)\bi{U}_{**_R} + (S_M-S_L^*)\bi{U}_{**_L} + (S_L^*-S_L)\bi{U}_{*_L} -S_R\bi{U}_R + S_L\bi{U}_L + \tilde{\bi{F}}_R - \tilde{\bi{F}}_L = 0
+ 	\]
+ 	получаем выражения для соответствующих компонент:
+ 	\[
+ 	v^{**} = \dfrac{ \sqrt{\rho_L^*}v_L^* + \sqrt{\rho_R^*}v_R^* + ( B_{y_R}^{*} - B_{y_L}^{*} )\text{sign}(B_x) }{  \sqrt{\rho_L^*} + \sqrt{\rho_R^*} },
+ 	\]
+ 	\[
+ 	w^{**} = \dfrac{ \sqrt{\rho_L^*}w_L^* + \sqrt{\rho_R^*}w_R^* + ( B_{z_R}^{*} - B_{z_L}^{*} )\text{sign}(B_x) }{  \sqrt{\rho_L^*} + \sqrt{\rho_R^*} },
+ 	\]
+ 	\[
+ 	B_y^{**} = \dfrac{ \sqrt{\rho_L^*}B_{y_R}^{*} + \sqrt{\rho_R^*}B_{y_L}^{*} + \sqrt{\rho_L^*\rho_R^*}(v_R^*-v_L^*)\text{sign}(B_x) }{  \sqrt{\rho_L^*} + \sqrt{\rho_R^*} },
+ 	\]
+ 	\[
+ 	B_z^{**} = \dfrac{ \sqrt{\rho_L^*}B_{z_R}^{*} + \sqrt{\rho_R^*}B_{z_L}^{*} + \sqrt{\rho_L^*\rho_R^*}(w_R^*-w_L^*)\text{sign}(B_x) }{  \sqrt{\rho_L^*} + \sqrt{\rho_R^*} },
+ 	\]
+ 	\[
+ 	e_\alpha^{**} = e_\alpha^* \mp \sqrt{\rho_\alpha^*}(\bi{v}^*_\alpha \cdot \bi{B}^*_\alpha - \bi{v}_\alpha^{**} \cdot \bi{B}_\alpha^{**} )\text{sign}(B_x).
+ 	\]
+ 	
+ 	Стоит заметить, что на практике для оценки верхней и нижней границ скоростей можно использовать следующие соотношения:
+ 	\[
+ 	S_L = \min(u_L,u_R)-\max(c_{f_L},c_{f_R}), \phantom{xxx} S_R = \min(u_L,u_R) + \max(c_{f_L},c_{f_R}).
+ 	\]
+ 	
+ 	Подводя итог, получаем HLLD-способ вычисления МГД-потока:
+ 	\[
+ 	\tilde{\bi{F}}_{HLLD} = 
+ 	\begin{cases}
+ 		\tilde{\bi{F}}_{L}, \phantom{xxx} S_L > 0, \\
+ 		\tilde{\bi{F}}_{*_L}, \phantom{xxx} S_L \le 0 \le S_L^*, \\
+ 		\tilde{\bi{F}}_{**_L}, \phantom{xxx} S_L^* \le 0 \le S_M, \\
+ 		\tilde{\bi{F}}_{**_R}, \phantom{xxx} S_M^* \le 0 \le S_R^*, \\
+ 		\tilde{\bi{F}}_{*_R}, \phantom{xxx} S_R^* \le 0 \le S_R, \\
+ 		\tilde{\bi{F}}_{R}, \phantom{xxx} S_R > 0.
+ 	\end{cases}
+ 	\]
+ 	\section{Численные эксперименты}
+ 	В ходе выполнения курсовой работы представленные расчётные схемы были программно реализованы на языке C++. Визуализация полученных решений была выполнена с помощью библиотеки Matplotlib на языке Python.
+ 		\subsection{Распространение циркулярно поляризованной альфвеновской волны}
+ 		Для сравнения точности численных схем на гладких решениях рассмотрим задачу о распространении циркулярно поляризованной альфвеновской волны под углом $\alpha~=~\sfrac\pi6$ к оси $x$ в области $[0, 1/\cos\alpha]$ \cite{Lukin}. Начальные условия имеют вид:
+ 		\[
+ 		\rho = 1, \phantom{x} v_{||}=0, \phantom{x} v_{\perp} = 0.1\sin2\pi\xi,\phantom{x} w=0.1\cos2\pi\xi,
+ 		\]
+ 		\[
+ 		B_{||}=\sqrt{4\pi},\phantom{x} B_{\perp} = 0.1\sqrt{4\pi}\sin2\pi\xi,\phantom{x} B_z =0.1\sqrt{4\pi}\cos2\pi\xi,\phantom{x} p =0.1,
+ 		\]
+ 		где $\xi = x\cos\alpha$. Волна распространяется в направлении точки $x=0$ со скоростью $B_{||}/\sqrt{4\pi\rho}=1$. 
+ 		
+ 		Задача решим на сетке $\Omega_h^N$ с шагом $1/N$ при $N=8,16,32,64$. Для каждого расчёта оценим относительную ошибку вычислений по формуле 
+ 		\[
+ 			\delta_N(\psi) = \dfrac{\displaystyle\sum_{x\in\Omega_h^N}|\psi^N(x)-\psi^E(x)|}{\displaystyle\sum_{x\in\Omega_h^N}|\psi^E(x)|},
+ 		\]
+ 		где $\psi \in \{v_{\perp},w,B_{\perp},B_z\}$, $\psi^E$ --- точное решение (за точное решение примем решение, вычисленное при $N=128$). Скорость сходимости оценим как
+ 		\[
+ 		R_N = \log_2\dfrac{\delta_{N/2}}{\delta_N},
+ 		\]
+ 		где в качестве $\delta_N$ выбиралось среднее
+ 		\[
+ 		\delta_N = \dfrac14 (\delta_N(v_{\perp}) + \delta_N(w) + \delta_N(B_{\perp}) + \delta_N(B_z))
+ 		\]
+ 		
+ 		Проведём расчёт с показателем адиабаты $\gamma = 5/3$, числом Куранта $C=0.3$ до момента времени $T = 0.05$.
+ 		
+ 			\begin{figure}[H]
+ 			\centering
+ 			\hspace*{0mm}\includegraphics[width=1.\textwidth]{AlfvenWaves}
+ 			\caption{Задача о распространении альфвеновской волны. Ортогональная компонента $B_\perp$ магнитного поля при расчётах на различных сетках различными методам в момент времени $t=0.05$}
+ 		\end{figure}
+
+ 	\begin{center}
+ 	\begin{tabular}{|l|r|l|r|l|r|l|}
+ 		\hline
+ 		& \multicolumn{2}{c|}{HLL} & \multicolumn{2}{c|}{HLLC} & \multicolumn{2}{c|}{HLLD} \\
+ 		\hline
+ 		$N$& $\delta_N$ & $R_N$ & $\delta_N$ & $R_N$ & $\delta_N$ & $R_N$ \\
+ 		\hline
+ 		8 & 0.483645 & - & 0.481868 & - & 0.482842 & - \\
+ 		\hline
+ 		16 & 0.224146 & 1.109506 & 0.223023 & 1.111449 & 0.223643 & 1.110351 \\
+ 		\hline
+ 		32 & 0.089332 & 1.327188 & 0.088887 & 1.327153 & 0.089123 & 1.327325 \\
+ 		\hline
+ 		64 & 0.024346 & 1.875505 & 0.024202 & 1.876822 & 0.024268 & 1.876730 \\
+ 		\hline
+ 	\end{tabular}
+ \vspace*{5mm}
+ 
+ Таблица 1: Усреднённая ошибка и скорость сходимости в задаче о распространении альфвеновской волны	
+ \end{center}
+ 	\subsection{Задача о распаде разрыва}
+ 	\textsl{1. Задача Брио---Ву: $x \in [-0.5, 0.5]$, $t \in [0, 0.1]$, $B_x = 0.75$.}
+ 	
+ 	При $t=0$:
+ 	\[
+ 	(\rho, p, u, v, w, B_y, B_z) = \begin{cases}
+ 		(1, 1, 0,0,0,1,0),  \phantom{xx}&x < 0,\\
+ 		(0.125, 0.1, 0,0,0,-1,0),  \phantom{xx}&x > 0.
+ 		\end{cases}
+ 	\]
+ 	
+ 	Показатель адиабаты $\gamma = 2$. Расчёт произведён с шагом $h=0.0025$ (400 узлов), числом Куранта $C=0.1$. Иллюстрация полученного решения (графики распределения плотности $\rho$, скоростей $u$ и~$v$, компонент магнитного поля $B_y$ и $B_z$, давления $p$) в~момент времени $t=0.1$ приведена на рис. 1.
+ 	
+ 	\textsl{2. Разрыв с параметрами: $x \in [-0.5, 0.5]$, $t \in [0, 0.2]$, $B_x = 4/\sqrt{4\pi}$.}
+ 	
+ 	При $t=0$:
+ 	\[
+ 	(\rho, p, u, v, w, B_y, B_z) = \begin{cases}
+ 		(1.08, 0.95, 1.2, 0.01, 0.5, 3.6/\sqrt{4\pi}, 2/\sqrt{4\pi}),  \phantom{xx}&x < 0,\\
+ 		(1, 1, 0, 0, 0, 4/\sqrt{4\pi}, 2/\sqrt{4\pi}),  \phantom{xx}&x > 0.
+ 	\end{cases}
+ 	\]
+ 	
+ 	Показатель адиабаты $\gamma = \sfrac53$. Расчёт произведён с шагом $h=0.0025$ (400 узлов), числом Куранта $C=0.2$. Иллюстрация полученного решения (графики распределения плотности $\rho$, скоростей $u$ и~$v$, компонент магнитного поля $B_y$ и $B_z$, давления $p$) в момент времени $t=0.2$ приведена на рис. 2.
+ 	
+ 	\begin{figure}[H]
+ 		\centering
+ 		\hspace*{-20mm}\includegraphics[width=1.2\textwidth]{BrioWuTest}
+ 		\caption{Распад разрыва в задаче Брио---Ву в момент времени $t=0.1$}
+ 	\end{figure}
+ 	
+ 	\begin{figure}[H]
+ 		\centering
+ 		\hspace*{-20mm}\includegraphics[width=1.2\textwidth]{ShockTubeTest}
+ 		\caption{Распад разрыва из теста 2 в момент времени $t=0.2$}
+ 	\end{figure}
+ \pagebreak
+ 
 	\section-{Заключение}
-	Таким образом, в ходе выполнения курсовой работы
+	Таким образом, в ходе выполнения курсовой работы были представлены расчётные схемы решения МГД-задачи для идеальной плазмы.
+	Было проведено исследование построения методов интегро-интерполяционным методом. Реализован программный комплекс, состоящий из программы, реализующей HLL, HLLC-L и HLLD алгоритмы на языке C++, и программы, реализующей визуализацию решений на Python.
+	
 \begin{thebibliography}{9}
 	\bibitem{Kulikovskiy} А.\,Г. Куликовский, Г.\,А. Любимов. Магнитная гидродинамика. М.: Логос, 2005. --- 328 с.
-	\bibitem{Kulikovskiy et al} А.\,Г. Куликовский, Н.\,В. Погорелов, А.\,Ю. Семёнов. Математические вопросы численного решения гиперболических систем уравнений. М.: Наука. Физматлит, 2001. --- 608 с.
-	\bibitem{Lukin} М.\,П. Галанин, В.\,В. Лукин. Разностная схема для решения двумерных задач идеальной МГД на неструктурированных сетках. 2007. 29 с. Препр. Инст. прикл матем. им. М.\,В. Келдыша РАН №50.
-	\bibitem{Kusano} T. Miyoshi, K. Kusano. A multi-state HLL approximate Riemann solver for ideal magnetohydrodynamics. J. Comp. Phys. 208, 2005, pp. 315-344. 
+		\bibitem{Kusano} T. Miyoshi, K. Kusano. A multi-state HLL approximate Riemann solver for ideal magnetohydrodynamics. J. Comp. Phys. 208, 2005, pp. 315-344. 
+		\bibitem{Lukin} М.\,П. Галанин, В.\,В. Лукин. Разностная схема для решения двумерных задач идеальной МГД на неструктурированных сетках. Препр. Инст. прикл матем. им. М.\,В. Келдыша РАН №50. 2007. 29 с. 
+	\bibitem{Kulikovskiy et al} А.\,Г. Куликовский, Н.\,В. Погорелов, А.\,Ю. Семёнов. Математические вопросы численного решения гиперболических систем уравнений. М.: Наука. Физматлит. 2001. --- 608 с.
 	\bibitem{Comparison} G. Mattia, A. Mignone. A comparison of approximate non-linear Riemann solvers for Relativistic MHD. MNRAS. 510, 2022, pp. 481-499. 
+	\bibitem{Savenkov} М.\,П. Галанин, Е.\,Б. Савенков. Методы численного анализа математических моделей. М.: Изд-во МГТУ им. Н.Э. Баумана. 2018. --- 592 с.
+	\bibitem{Ustygov}С.\,Д. Устюгов, М.\,В. Попов. Кусочно-параболический метод на локальном шаблоне. III. Одномерная идеальная МГД. Препр. Инст. прикл матем. им. М.\,В. Келдыша РАН. 2006. 27с.
 \end{thebibliography}
 
 \end{document}
