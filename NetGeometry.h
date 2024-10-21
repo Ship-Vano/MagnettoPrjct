@@ -7,6 +7,7 @@
 
 #include <vector>
 
+//point
 class Node{
 public:
     double x;
