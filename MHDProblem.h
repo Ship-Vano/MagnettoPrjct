@@ -22,7 +22,7 @@ public:
     double h;   // шаг по пространству
     double gam_courant; // число Куранта
     int num_time_steps; // количество шагов по времени
-    int num_space_steps; // количество шагов по пространству
+    int num_space_steps;// количество шагов по пространству
     MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, double gam_courant_init, bool what_is_L_init);
 
     // Начальное состояние системы
