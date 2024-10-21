@@ -1,15 +1,14 @@
 #include <iostream>
-#include "MHDSolver.h"
+#include "MHDSolver1D.h"
 #include "ShockTube1D.h"
 #include <format>
 #include <string>
 #include <string_view>
 
-int main() {
-
+void tests1D(){
     std::vector<double> BrioWu_L1{1., 0., 0., 0., 1., 0.75, 1., 0.};
     std::vector<double> BrioWu_R1{0.125, 0., 0., 0., 0.1, 0.75, -1., 0.};
-                                  /*rho  u     v    w     p    Bx                             By                        Bz*/
+    /*rho  u     v    w     p    Bx                             By                        Bz*/
     std::vector<double> BrioWu_L2{1.08, 1.2, 0.01, 0.5, 0.95, 4./(std::sqrt(4.*M_PI)), 3.6/(std::sqrt(4.*M_PI)), 2./(std::sqrt(4.*M_PI))};
     std::vector<double> BrioWu_R2{1., 0., 0., 0., 1., 4./(std::sqrt(4.*M_PI)), 4./(std::sqrt(4.*M_PI)), 2./(std::sqrt(4.*M_PI))};
 
@@ -25,7 +24,7 @@ int main() {
     double tau_1 = 0.00002;
     double gam_courant = 0.1;
     //double gam_courant = 0.2;
-    MHDProblem problem1(gam_hcr_1, x0_1, X_1, t0_1, T_1, h_1, tau_1, gam_courant, what_is_L_1);
+    MHDProblem1D problem1(gam_hcr_1, x0_1, X_1, t0_1, T_1, h_1, tau_1, gam_courant, what_is_L_1);
 
     ShockTube1D BrioWuTest = ShockTube1D(gam_hcr_1, BrioWu_L2, BrioWu_R2, (problem1.X+problem1.x0)/2);
 
@@ -39,7 +38,7 @@ int main() {
 
     double h2 = 0.0025;
     double tau2 = 0.00002;
-    MHDProblem problem2(gam_hcr_1, x0_1, X_1, t0_1, T_1, h2, tau2, gam_courant, what_is_L_1);
+    MHDProblem1D problem2(gam_hcr_1, x0_1, X_1, t0_1, T_1, h2, tau2, gam_courant, what_is_L_1);
     problem2.initStateFunc = BrioWuTest.initDistrib;
     problem2.leftBoundaryFunction = BrioWuTest.leftBound;
     problem2.rightBoundaryFunction = BrioWuTest.rightBound;
@@ -47,7 +46,7 @@ int main() {
 
     double h3 = 0.0025;
     double tau3 = 0.00002;
-    MHDProblem problem3(gam_hcr_1, x0_1, X_1, t0_1, T_1, h3, tau3, gam_courant, what_is_L_1);
+    MHDProblem1D problem3(gam_hcr_1, x0_1, X_1, t0_1, T_1, h3, tau3, gam_courant, what_is_L_1);
     problem3.initStateFunc = BrioWuTest.initDistrib;
     problem3.leftBoundaryFunction = BrioWuTest.leftBound;
     problem3.rightBoundaryFunction = BrioWuTest.rightBound;
@@ -56,7 +55,7 @@ int main() {
     std::vector<int> space_numbers{64,128,256,512,1024};
     for(int k = 0; k < 5; ++k){
         double hh = (X_1 - x0_1)/space_numbers[k];
-        MHDProblem problem(gam_hcr_1, x0_1, X_1, t0_1, T_1, hh, tau_1, gam_courant, what_is_L_1);
+        MHDProblem1D problem(gam_hcr_1, x0_1, X_1, t0_1, T_1, hh, tau_1, gam_courant, what_is_L_1);
 
         ShockTube1D BrioWu = ShockTube1D(gam_hcr_1, BrioWu_L1, BrioWu_R1, (problem.X+problem.x0)/2);
 
@@ -88,7 +87,7 @@ int main() {
 //    std::vector<int> space_numbers{8,16,32,64,128};
 //    for(int k = 0; k < 5; ++k){
 //        double hh = (X_2 - x0_2)/space_numbers[k];
-//        MHDProblem problemAlfven(gam_hcr_2,x0_2, X_2, t0_2, T_2, hh, tau_2, gam_courant_2, what_is_L_2);
+//        MHDProblem1D problemAlfven(gam_hcr_2,x0_2, X_2, t0_2, T_2, hh, tau_2, gam_courant_2, what_is_L_2);
 //        problemAlfven.initStateFunc =  ([&](double x) {
 //            double rho_2 = 1.0;
 //            double u_2 = 0.;
@@ -107,6 +106,10 @@ int main() {
 //        HLLCScheme(problemAlfven, std::format("AlfvenWaveTest_HLLC_{}", k));
 //        HLLDScheme(problemAlfven, std::format("AlfvenWaveTest_HLLD_{}", k));
 //    }
+}
+
+int main() {
+
 
     return 0;
 }

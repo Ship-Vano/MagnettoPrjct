@@ -5,7 +5,7 @@
 #ifndef MAGNETTOPRJCT_SHOCKTUBE1D_H
 #define MAGNETTOPRJCT_SHOCKTUBE1D_H
 
-#include"MHDSolver.h"
+#include"MHDSolver1D.h"
 
 class ShockTube1D {
 public:

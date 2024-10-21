@@ -1,15 +1,23 @@
 cmake_minimum_required(VERSION 3.27)
-project(MagnettoPrjct)
+project(MagnettoPrjct LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+
+add_subdirectory( vtu11 )
 
 add_executable(MagnettoPrjct
         main.cpp
         LinOp.h
         FileIO.h
-        MHDProblem.h
-        MHDProblem.cpp
-        MHDSolver.cpp
-        MHDSolver.h
+        MHDProblem1D.h
+        MHDProblem1D.cpp
+        MHDSolver1D.cpp
+        MHDSolver1D.h
         ShockTube1D.cpp
-        ShockTube1D.h)
+        ShockTube1D.h
+        GasSolver2D.cpp
+        GasSolver2D.h
+        GasSolver2D.h
+        NetGeometry.cpp
+        NetGeometry.h)
+target_link_libraries( MagnettoPrjct PRIVATE vtu11::vtu11 )

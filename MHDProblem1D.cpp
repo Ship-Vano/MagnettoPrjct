@@ -2,9 +2,9 @@
 // Created by Иван on 4/29/2024.
 //
 
-#include "MHDProblem.h"
+#include "MHDProblem1D.h"
 
-MHDProblem::MHDProblem(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, double gam_courant_init, bool what_is_L_init) {
+MHDProblem1D::MHDProblem1D(double gam_hcr_init, double x0_init, double L_init, double t0_init, double T_init, double h_init, double tau_init, double gam_courant_init, bool what_is_L_init) {
     gam_hcr = gam_hcr_init;
     x0 = x0_init;
     if(what_is_L_init){

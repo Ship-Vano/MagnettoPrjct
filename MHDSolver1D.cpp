@@ -1,7 +1,7 @@
 //
 // Created by Иван on 4/29/2024.
 //
-#include "MHDSolver.h"
+#include "MHDSolver1D.h"
 
 /*          0      1      2      3    4   5   6   7
  * state:  rho,  rho*u, rho*v, rho*w, e, Bx, Bz, By
@@ -427,7 +427,7 @@ std::vector<double> HLLD_flux(const std::vector<double>& U_L, const std::vector<
  * args: problem
  * return: initial state
  * */
-std::vector<std::vector<double>> initializeState(const MHDProblem &problem){
+std::vector<std::vector<double>> initializeState(const MHDProblem1D &problem){
     std::vector<std::vector<double>> new_state(problem.num_space_steps+1, std::vector<double>(8,0));
     double x_i = problem.x0;
 
@@ -453,7 +453,7 @@ double tau_from_cfl(const double& sigma, const double& h, const std::vector<std:
     return sigma * h / max_speed;
 }
 
-bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
+bool HLLScheme(const MHDProblem1D &problem, const std::string &filename) {
 
     // Создание файла
     std::string path = "./OutputData/" + filename;
@@ -547,7 +547,7 @@ bool HLLScheme(const MHDProblem &problem, const std::string &filename) {
     }
 };
 
-bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
+bool HLLCScheme(const MHDProblem1D &problem, const std::string &filename) {
 
     // Создание файла
     std::string path = "./OutputData/" + filename;
@@ -643,7 +643,7 @@ bool HLLCScheme(const MHDProblem &problem, const std::string &filename) {
     }
 };
 
-bool HLLDScheme(const MHDProblem &problem, const std::string &filename) {
+bool HLLDScheme(const MHDProblem1D &problem, const std::string &filename) {
 
     // Создание файла
     std::string path = "./OutputData/" + filename;
