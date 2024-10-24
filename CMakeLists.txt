@@ -19,5 +19,7 @@ add_executable(MagnettoPrjct
         GasSolver2D.h
         GasSolver2D.h
         NetGeometry.cpp
-        NetGeometry.h)
+        NetGeometry.h
+        NamesNConstants.h
+        NamesNConstants.h)
 target_link_libraries( MagnettoPrjct PRIVATE vtu11::vtu11 )

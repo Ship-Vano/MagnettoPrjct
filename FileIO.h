@@ -82,5 +82,4 @@ void write_data_to_file(string filepath, vector<vector<DT>> data)
     output_data.close();
 }
 
-
 #endif //MAGNETTOPRJCT_FILEIO_H
