@@ -155,3 +155,71 @@ std::vector<double> HLL_fluxGy(const std::vector<double>& U_L, const std::vector
         return G_flux(U_R, gam_hcr);
     }
 }
+
+// Энергия
+double energy(const double &gam_hcr, const double &p, const double &rho, const double &u, const double &v, const double &w){
+    return p/(gam_hcr-1) + 0.5*rho*(u * u + v * v + w * w);
+}
+// Вектор состояния из параметров
+std::vector<double>
+state_from_primitive_vars(const double &rho, const double &u, const double &v, const double &w, const double &p, const double &gam_hcr) {
+    std::vector<double> U(5,0.);
+
+    double mx = rho * u;
+    double my = rho * v;
+    double mz = rho * w;
+    double e = energy(gam_hcr, p, rho, u, v, w);
+
+    U[0] = rho;
+    U[1] = mx;
+    U[2] = my;
+    U[3] = mz;
+    U[4] = e;
+    return U;
+}
+
+void solverHLL2D(const World& world){
+    NodePool np = world.getNodePool();
+    ElementPool ep = world.getElementPool();
+    std::vector<std::vector<double>> states(np.nodeCount, std::vector<double>(5, 0.0));
+    /*
+     *     states[i] <---> np.nodes[i]
+     *
+     * */
+
+    //test1:   [0, 1] x [0, 1]
+    /*   quadrant            rho        u         v         p
+     *   x>0.5, y>0.5:          0.5313     0.0       0.0       0.4
+     *   x<0.5, y>0.5:          1.0        0.7276    0.0       1.0
+     *   x<0.5, y<0.5:          0.8        0.0       0.0       1.0
+     *   x>0.5, y<0.5:          1.0        0.0       0.7276    1.0
+     *   FREE-FLOW boundary conditions
+     * */
+    //printf("elCount = %d", ep.elCount);
+
+    //initializer
+    for(int i = 0; i < np.nodeCount; ++i){
+        Node tmp_node = np.nodes[i];
+        if(tmp_node.x < 0.5 && tmp_node.y > 0.5){
+            states[i] = state_from_primitive_vars();
+        }
+        else if(tmp_node.x > 0.5 && tmp_node.y > 0.5){
+
+        }
+        else if(tmp_node.x < 0.5 && tmp_node.y < 0.5){
+
+        }
+        else{
+
+        }
+    }
+
+
+    //solver
+    for(int i = 0; i < ep.elCount; ++i){
+        //пока делаем для n=4, для n=3 попозже...
+        std::vector<int> nodeInds = ep.elements[i].nodeIndexes;
+
+    }
+
+}

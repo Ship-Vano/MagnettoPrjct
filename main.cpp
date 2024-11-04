@@ -1,6 +1,9 @@
-#include <iostream>
 #include "MHDSolver1D.h"
 #include "ShockTube1D.h"
+#include "NetGeometry.h"
+#include "GasSolver2D.h"
+
+#include <iostream>
 #include <format>
 #include <string>
 #include <string_view>
@@ -110,6 +113,8 @@ void tests1D(){
 
 int main() {
 
-
+    World world("InputData/mesh.txt");
+    //world.display();
+    solverHLL2D(world);
     return 0;
 }

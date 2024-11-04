@@ -7,8 +7,9 @@
 
 #include "LinOp.h"
 #include "FileIO.h"
+#include "NetGeometry.h"
 #include <cmath>
 
-
+void solverHLL2D(const World& world);
 
 #endif //MAGNETTOPRJCT_GASSOLVER2D_H
