@@ -114,7 +114,15 @@ void tests1D(){
 int main() {
 
     World world("InputData/mesh.txt");
-    //world.display();
-    solverHLL2D(world);
+    world.display();
+    //solverHLL2D(world);
+//    Node node1 = Node(0, 1.0,52.0,-13.0);
+//    Node node2 = Node(1, 10.0, 200.0 ,-2.);
+//    Node node3 = Node(2, -100.5, 1.0, -222);
+//    NodePool np = NodePool(3, {node1, node2, node3});
+//    Element el = Element(0, {0,1,2}, 3);
+//    double area =  areaCalc(el, np);
+//    std::cout << area << std::endl;
+    //printf("The area is S = %f", area);
     return 0;
 }

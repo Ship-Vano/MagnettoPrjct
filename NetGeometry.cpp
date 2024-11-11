@@ -8,11 +8,41 @@
 Node::Node(int index, double xCoord, double yCoord, double zCoord)
         : ind(index), x(xCoord), y(yCoord), z(zCoord) {}
 
-Element::Element(const std::vector<int>& indexes, int nodeSize)
-        : nodeIndexes(indexes), nodeSize(nodeSize) {}
+Element::Element(const int index, const std::vector<int> &nIndexes, int size)
+        : ind(index), nodeIndexes(nIndexes), dim(size) {
+}
+
+double areaCalc(const Element& poly, const NodePool& nPool) {
+    int dim = poly.dim;
+    std::vector<Node> polyNodes;
+    for(int i = 0; i < dim; ++i){
+        polyNodes.push_back(nPool.nodes[poly.nodeIndexes[i]]);
+    }
+    double res = 0.0;
+    double iSum = 0.0;
+    double jSum = 0.0;
+    double kSum = 0.0;
+    for(int k = 1; k < dim-1; ++k){
+        double yk_y1 = polyNodes[k].y - polyNodes[0].y;  //y_k - y_1
+        double zk1_z1 = polyNodes[k+1].z - polyNodes[0].z; // z_{k+1} - z_1
+        double zk_z1 = polyNodes[k].z - polyNodes[0].z;
+        double yk1_y1 = polyNodes[k+1].y - polyNodes[0].y;
+        double xk1_x1 = polyNodes[k+1].x - polyNodes[0].x;
+        double xk_x1 = polyNodes[k].x - polyNodes[0].x;
+        iSum += (yk_y1 * zk1_z1 - zk_z1 * yk1_y1);
+        jSum += (zk_z1 * xk1_x1 - xk_x1 * zk1_z1);
+        kSum += (xk_x1 * yk1_y1 - yk_y1 * xk1_x1);
+    }
+    res = 0.5 * std::sqrt(iSum*iSum + jSum*jSum + kSum*kSum);
+    return res;
+}
 
 NodePool::NodePool(int size, const std::vector<Node>& nodeVec)
         : nodeCount(size), nodes(nodeVec) {}
+
+Node NodePool::getNode(int ind) {
+    return nodes[ind];
+}
 
 ElementPool::ElementPool(int nodesPerElement, int elCnt, const std::vector<Element>& elems)
         : elCount(elCnt), isSquare(nodesPerElement == SQUARE_ELEMENT_NODE_COUNT),
@@ -66,7 +96,7 @@ World::World(const std::string& fileName) : np(), ep() {
                 for (int i = 0; i < count; ++i) {
                     ss >> indexes[i]; // Directly read into vector
                 }
-                elements.emplace_back(indexes, count);
+                elements.emplace_back(ind, indexes, count);
                 std::getline(file, tmp_line);
             }
         }
@@ -74,6 +104,11 @@ World::World(const std::string& fileName) : np(), ep() {
 
     np = NodePool(nodes.size(), nodes);
     ep = ElementPool(nodes[0].ind, elements.size(), elements); // Assuming nodes[0].ind is the nodesPerElement
+
+    for(int i = 0; i < ep.elCount; ++i){
+        ep.elements[i].area = areaCalc(ep.elements[i], np);
+    }
+
 }
 
 void World::display() const {
@@ -87,7 +122,7 @@ void World::display() const {
     std::cout << "Element Pool:" << std::endl;
     std::cout << "Total Elements: " << ep.elCount << std::endl;
     for (const auto& element : ep.elements) {
-        std::cout << "Element with Node Size: " << element.nodeSize << ", Node Indices: ";
+        std::cout << "Element with Node Size: " << element.dim << ", Area = " << element.area<<", Node Indices: ";
         for (const auto& index : element.nodeIndexes) {
             std::cout << index << " ";
         }

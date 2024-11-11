@@ -12,11 +12,12 @@
 #include <sstream>
 #include <utility>
 #include <iostream>
+#include <cmath>
 
-// Point
+// Узел
 class Node {
 public:
-    int ind;
+    int ind; // порядковый номер
     double x;
     double y;
     double z;
@@ -24,16 +25,30 @@ public:
     Node(int index, double xCoord, double yCoord, double zCoord);
 };
 
-// Mesh elements
-class Element {
+// Ребро
+class Edge{
 public:
-    int nodeSize; // Changed to non-const
-    std::vector<int> nodeIndexes;
-
-    Element(const std::vector<int>& indexes, int nodeSize);
+    int ind; // порядковый номер
+    int nodeInd1; // номер первого узла
+    int nodeInd2; // номер второго узла
+    int neighbourInd1; //номер первого соседнего элемента
+    int neighbourInd2; //номер второго соседнего элемента
+    int orientation; // ориентация (по идее будет = 1 или = -1)
+    std::vector<double> normalVector; // компоненты вектора нормали
 };
 
-// Node pool
+// Элемент
+class Element {
+public:
+    int ind; // порядковый номер
+    int dim; // размерность (кол-во узлов)
+    std::vector<int> nodeIndexes; //номера узлов
+    std::vector<int> edgeIndexes; //номера рёбер
+    double area = 0.; //площадь
+    Element(const int index, const std::vector<int> &nIndexes, int size);
+};
+
+// Набор узлов
 class NodePool {
 public:
     int nodeCount;
@@ -41,9 +56,18 @@ public:
 
     NodePool(int size, const std::vector<Node>& nodeVec);
     NodePool() : nodeCount(0), nodes() {} // Default constructor
+
+    Node getNode(int ind);
 };
 
-// Element pool
+// Набор рёбер
+class EdgePool{
+public:
+    int edgeCount;
+    std::vector<Edge> edges;
+};
+
+// Набор элементов
 class ElementPool {
 public:
     int elCount;
@@ -68,5 +92,7 @@ public:
     World(const std::string& fileName);
     void display() const;
 };
+
+double areaCalc(const Element& poly, const NodePool& nPool);
 
 #endif // MAGNETTOPRJCT_NETGEOMETRY_H
