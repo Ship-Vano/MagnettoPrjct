@@ -13,6 +13,10 @@
 #include <utility>
 #include <iostream>
 #include <cmath>
+#include <cassert>
+#include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 // Узел
 class Node {
@@ -35,6 +39,8 @@ public:
     int neighbourInd2; //номер второго соседнего элемента
     int orientation; // ориентация (по идее будет = 1 или = -1)
     std::vector<double> normalVector; // компоненты вектора нормали
+    Edge(int index, int node1, int node2, int neighbor1, int neighbor2,
+         int orient, const std::vector<double>& normalVec);
 };
 
 // Элемент
@@ -57,14 +63,7 @@ public:
     NodePool(int size, const std::vector<Node>& nodeVec);
     NodePool() : nodeCount(0), nodes() {} // Default constructor
 
-    Node getNode(int ind);
-};
-
-// Набор рёбер
-class EdgePool{
-public:
-    int edgeCount;
-    std::vector<Edge> edges;
+    Node getNode(int ind) const;
 };
 
 // Набор элементов
@@ -79,18 +78,50 @@ public:
     ElementPool() : elCount(0), isSquare(false), isTriangular(false), elements() {} // Default constructor
 };
 
+// Набор рёбер
+class EdgePool{
+public:
+    int edgeCount;
+    std::vector<Edge> edges;
+    EdgePool(int size, const std::vector<Edge>& edgeVec);
+    EdgePool(const NodePool& np, const ElementPool& ep);
+    EdgePool() : edgeCount(0), edges() {} // Default constructor
+};
+
+class NeighbourService {
+private:
+    std::unordered_map<int, std::unordered_set<int>> nodeToElements;
+    std::unordered_map<int, std::unordered_set<int>> elementToElements;
+    std::unordered_map<int, std::unordered_set<int>> edgeToElements;
+
+public:
+    NeighbourService(const NodePool& np, const ElementPool& ep, const EdgePool& edgePool);
+
+    std::unordered_set<int> getNodeNeighbours(int nodeIndex) const;
+    std::unordered_set<int> getEdgeNeighbours(int edgeIndex) const;
+    std::unordered_set<int> getElementNeighbours(int elementIndex) const;
+
+    void displayNeighbours() const;
+};
+
+
 // Problem's World
 class World {
 private:
     NodePool np;
     ElementPool ep;
+    EdgePool edgp;
+    NeighbourService ns;
 public:
     void setNodePool(const NodePool& np);
     NodePool getNodePool() const;
     void setElementPool(const ElementPool& ep);
     ElementPool getElementPool() const;
+    EdgePool getEdgePool() const;
+    void setEdgePool(const EdgePool& edgp);
     World(const std::string& fileName);
     void display() const;
+    NeighbourService& getNeighbourService();
 };
 
 double areaCalc(const Element& poly, const NodePool& nPool);
