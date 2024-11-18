@@ -15,9 +15,9 @@ add_executable(MagnettoPrjct
         MHDSolver1D.h
         ShockTube1D.cpp
         ShockTube1D.h
-        GasSolver2D.cpp
-        GasSolver2D.h
-        GasSolver2D.h
+        MHDSolver2D.cpp
+        MHDSolver2D.h
+        MHDSolver2D.h
         NetGeometry.cpp
         NetGeometry.h
         NamesNConstants.h
