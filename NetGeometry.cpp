@@ -43,6 +43,26 @@ double areaCalc(const Element& poly, const NodePool& nPool) {
     return res;
 }
 
+std::vector<double> getElementCentroid2D(const Element &poly, const NodePool &nPool) {
+    int dim = poly.dim;
+    std::vector<double> centroid(2, 0.0);
+    for(int i = 0; i < dim; ++i){
+        Node node = nPool.getNode(poly.nodeIndexes[i]);
+        centroid[0] += node.x;
+        centroid[1] += node.y;
+    }
+    centroid[0] /= dim;
+    centroid[1] /= dim;
+    return centroid;
+}
+
+std::vector<double> getMidPoint2D(const int nodeInd1, const int nodeInd2, const NodePool &nPool) {
+    Node node1 = nPool.getNode(nodeInd1);
+    Node node2 = nPool.getNode(nodeInd2);
+    std::vector<double> mid{(node1.x + node2.x)/2.0, (node1.y + node2.y)/2.0};
+    return mid;
+}
+
 NodePool::NodePool(int size, const std::vector<Node>& nodeVec)
         : nodeCount(size), nodes(nodeVec) {}
 
@@ -98,7 +118,6 @@ EdgePool::EdgePool(const NodePool& np, const ElementPool& ep) {
             int node1 = element.nodeIndexes[i];
             int node2 = element.nodeIndexes[(i + 1) % dim]; // Ensure cyclical connectivity
             if (node1 > node2) std::swap(node1, node2); // Ensure consistent ordering
-
             auto edgeKey = std::make_pair(node1, node2);
             edgeMap[edgeKey].insert(element.ind); // Insert element index into the unordered_set for this edge
         }
@@ -109,7 +128,6 @@ EdgePool::EdgePool(const NodePool& np, const ElementPool& ep) {
         int node1 = edgeEntry.first.first;
         int node2 = edgeEntry.first.second;
         const auto& neighbors = edgeEntry.second; // Get the set of neighboring elements
-
         int neighbor1 = -1, neighbor2 = -1;
         auto it = neighbors.begin();
         if (it != neighbors.end()) {
@@ -119,10 +137,15 @@ EdgePool::EdgePool(const NodePool& np, const ElementPool& ep) {
                 neighbor2 = *it;
             }
         }
-
-        int orientation = 1;  // You can compute the orientation if needed
+        int orientation = 1;
         std::vector<double> normalVector = calculateNormalVector2D(np.getNode(node1), np.getNode(node2));  // You can compute the normal vector if needed
-
+        if(neighbor1 == -1){
+            std::swap(neighbor1,neighbor2);
+        }
+        std::vector<double> edgeMid = getMidPoint2D(node1, node2, np);
+        std::vector<double> neighbour1ToEdgeMidVector =
+                    edgeMid - getElementCentroid2D(ep.elements[neighbor1], np);
+        orientation = normalVector * neighbour1ToEdgeMidVector > 0 ? 1 : -1;
         // Create the edge and add it to the list
         edges.emplace_back(edgeIndex++, node1, node2, neighbor1, neighbor2, orientation, normalVector);
     }

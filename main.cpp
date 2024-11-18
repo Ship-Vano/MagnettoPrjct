@@ -113,8 +113,9 @@ void tests1D(){
 
 int main() {
 
-    World world("InputData/mesh.txt");
+    World world("InputData/mesh4.txt");
     world.display();
+
     //solverHLL2D(world);
 //    Node node1 = Node(0, 1.0,52.0,-13.0);
 //    Node node2 = Node(1, 10.0, 200.0 ,-2.);

@@ -6,6 +6,7 @@
 #define MAGNETTOPRJCT_NETGEOMETRY_H
 
 #include "NamesNConstants.h"
+#include "LinOp.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -125,5 +126,9 @@ public:
 };
 
 double areaCalc(const Element& poly, const NodePool& nPool);
+
+std::vector<double> getElementCentroid2D(const Element& poly, const NodePool& nPool);
+
+std::vector<double> getMidPoint2D(const int nodeInd1, const int nodeInd2, const NodePool& nPool);
 
 #endif // MAGNETTOPRJCT_NETGEOMETRY_H
