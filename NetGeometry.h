@@ -107,6 +107,7 @@ public:
     std::unordered_set<int> getElementNeighbours(int elementIndex) const;
     std::unordered_set<int> getEdgesOfElement(int elementIndex) const;
     std::unordered_set<int> getElementsOfEdge(int edgeIndex) const;
+    int findEdgeByNodes(int node1Index, int node2Index, const EdgePool& edgePool) const;
 
     void displayNeighbours() const;
 };

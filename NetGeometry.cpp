@@ -153,17 +153,25 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
         std::vector<double> neighbour1ToEdgeMidVector =
                     edgeMid - getElementCentroid2D(ep.elements[neighbor1], np);
         orientation = normalVector * neighbour1ToEdgeMidVector > 0 ? 1 : -1;
+        if(orientation < 0){
+            normalVector = normalVector * orientation;
+            std::swap(neighbor1, neighbor2);
+            orientation = 1;
+        }
+        else{
+            std::swap(node1, node2);
+        }
         double len = getDistance(node1, node2, np);
         // Create the edge and add it to the list
         edges.emplace_back(edgeIndex, node1, node2, neighbor1, neighbor2, orientation, len, normalVector);
 
         // Update edge indexes for the neighbors
-        if (neighbor1 != -1) {
-            ep.elements[neighbor1].edgeIndexes.push_back(edgeIndex);
-        }
-        if (neighbor2 != -1) {
-            ep.elements[neighbor2].edgeIndexes.push_back(edgeIndex);
-        }
+//        if (neighbor1 != -1) {
+//            ep.elements[neighbor1].edgeIndexes.push_back(edgeIndex);
+//        }
+//        if (neighbor2 != -1) {
+//            ep.elements[neighbor2].edgeIndexes.push_back(edgeIndex);
+//        }
 
         ++edgeIndex;
     }
@@ -221,6 +229,17 @@ NeighbourService::NeighbourService(const NodePool& np, const ElementPool& ep, co
         nodeToEdgesMap[edge.nodeInd1].push_back(edgeIndex);
         nodeToEdgesMap[edge.nodeInd2].push_back(edgeIndex);
     }
+}
+
+int NeighbourService::findEdgeByNodes(int node1Index, int node2Index, const EdgePool& edgePool) const {
+    for (int i = 0; i < edgePool.edges.size(); ++i) {
+        const auto& edge = edgePool.edges[i];
+        if ((edge.nodeInd1 == node1Index && edge.nodeInd2 == node2Index) ||
+            (edge.nodeInd1 == node2Index && edge.nodeInd2 == node1Index)) {
+            return i; // Return the index of the matching edge
+        }
+    }
+    return -1; // Return -1 if no edge is found
 }
 
 std::vector<int> NeighbourService::getEdgeNeighborsOfNode(int nodeIndex) const {
@@ -350,6 +369,17 @@ World::World(const std::string& fileName) : np(), ep(), edgp(), ns(np, ep, edgp)
 
     for(int i = 0; i < ep.elCount; ++i){
         ep.elements[i].area = areaCalc(ep.elements[i], np);
+    }
+
+    for(auto& element: ep.elements){
+        for(int i = 0; i < element.dim; ++i){
+            int nodeInd = element.nodeIndexes[i];
+            int nodeInd_after = element.nodeIndexes[(i+1)%element.dim];
+            int edgeInd = ns.findEdgeByNodes(nodeInd, nodeInd_after, edgp);
+            if(edgeInd > 0){
+                element.edgeIndexes.push_back(edgeInd);
+            }
+        }
     }
 
 }
