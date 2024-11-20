@@ -215,6 +215,20 @@ NeighbourService::NeighbourService(const NodePool& np, const ElementPool& ep, co
         }
         elementToElements[element.ind] = connectedElements;
     }
+
+    for (int edgeIndex = 0; edgeIndex < edgePool.edges.size(); ++edgeIndex) {
+        const auto& edge = edgePool.edges[edgeIndex];
+        nodeToEdgesMap[edge.nodeInd1].push_back(edgeIndex);
+        nodeToEdgesMap[edge.nodeInd2].push_back(edgeIndex);
+    }
+}
+
+std::vector<int> NeighbourService::getEdgeNeighborsOfNode(int nodeIndex) const {
+    auto it = nodeToEdgesMap.find(nodeIndex);
+    if (it != nodeToEdgesMap.end()) {
+        return it->second; // Return the list of edge indexes
+    }
+    return {}; // Return an empty vector if the node is not found
 }
 
 std::unordered_set<int> NeighbourService::getNodeNeighbours(int nodeIndex) const {
@@ -270,6 +284,15 @@ void NeighbourService::displayNeighbours() const {
         std::cout << "Edge " << edge << ": ";
         for (int elem : elements) {
             std::cout << elem << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // Node to Edges
+    for(const auto& [node, edges]: nodeToEdgesMap) {
+        std::cout << "Node " << node << " is connected to edges: ";
+        for(const auto& edge: edges) {
+            std::cout << edge << " ";
         }
         std::cout << std::endl;
     }

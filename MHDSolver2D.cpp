@@ -141,7 +141,38 @@ void MHDSolver2D::runSolver() {
     }
 
     //корректируем магитные величины
+    //находим узловые значения нужных магнитных разностей //(v x B)z в узлах
+    std::vector<double> nodeMagDiffs(nodePool.nodeCount, 0.0); //(v x B)z в узлах
+    for(const auto& node: nodePool.nodes){
+        int tmp_count = 0;
+        for(const auto& neighbourEdgeInd: ns.getEdgeNeighborsOfNode(node.ind)){
+            nodeMagDiffs[node.ind] += fluxes_temp[neighbourEdgeInd][6];
+            ++tmp_count;
+        }
+        if(tmp_count){
+            nodeMagDiffs[node.ind] /= tmp_count;
+        }
+    }
 
+    //находим новое значение Bn в ребре
+    std::vector<double> bNs_prev(bNs);
+
+
+    //сносим Bn в центр элемента
+    for(const auto& elem: elPool.elements){
+        elemUs[elem.ind][5] = 0.0;
+        elemUs[elem.ind][6] = 0.0;
+        for(const auto& nodeInd: elem.nodeIndexes){
+            int nodeInd_after = (nodeInd +1) % elem.dim;
+            int nodeInd_before = nodeInd == 0 ? elem.dim-1 : nodeInd - 1;
+            double dist = getDistance(nodeInd, nodeInd_after, nodePool);
+            std::vector<double> centroid = getElementCentroid2D(elem, nodePool);
+            //Bx
+            elemUs[elem.ind][5] += bNs[nodeInd] * dist * (centroid[0] - nodePool.getNode(nodeInd_before).x) / (2*elem.area);
+            //By
+            elemUs[elem.ind][6] += bNs[nodeInd] * dist * (centroid[1] - nodePool.getNode(nodeInd_before).y) / (2*elem.area);
+        }
+    }
 }
 
 // (1)подбираем оптимальное число шага по времени (Курант хард ту килл)
@@ -159,3 +190,4 @@ void MHDSolver2D::runSolver() {
 // a - левый узел, b - правый узел ребра элемента
 // обновлённый магнит записываем в массивы переменных
 // идём дальше по времени (повтор пред шагов)
+

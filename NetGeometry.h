@@ -93,6 +93,7 @@ public:
 class NeighbourService {
 private:
     std::unordered_map<int, std::unordered_set<int>> nodeToElements; // Nodes -> Elements
+    std::unordered_map<int, std::vector<int>> nodeToEdgesMap;       //Nodes -> Edges
     std::unordered_map<int, std::unordered_set<int>> edgeToElements; // Edges -> Elements
     std::unordered_map<int, std::unordered_set<int>> elementToElements; // Elements -> Elements
     std::unordered_map<int, std::unordered_set<int>> elementToEdges; // Elements -> Edges
@@ -100,7 +101,7 @@ private:
 
 public:
     NeighbourService(const NodePool& np, const ElementPool& ep, const EdgePool& edgePool);
-
+    std::vector<int> getEdgeNeighborsOfNode(int nodeIndex) const;
     std::unordered_set<int> getNodeNeighbours(int nodeIndex) const;
     std::unordered_set<int> getEdgeNeighbours(int edgeIndex) const;
     std::unordered_set<int> getElementNeighbours(int elementIndex) const;

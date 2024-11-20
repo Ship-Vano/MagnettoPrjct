@@ -19,7 +19,7 @@ class MHDSolver2D {
     std::vector<std::vector<double>> nodeUs; // state U in nodes
     std::vector<std::vector<double>> elemUs; // state U in elements
     std::vector<std::vector<double>> edgeUs; // state U in edges
-
+    std::vector<double> bNs; //Bns at edges
     //fluxes
     std::vector<std::vector<double>> fluxes;    // MHD (HLLD) fluxes (from one element to another "<| -> |>")
 
