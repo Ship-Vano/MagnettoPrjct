@@ -60,6 +60,33 @@
 //    }
 //
 //}
+
+
+/*вращения*/
+// n = {cos(j), sin(j)} = {n.x, n.y}
+// ({cos(j), -sin(j), 0}, {sin(j), cos(j), 0}, {0,0,1}) --- around OZ counterclockwise
+// rotate 1: from normal to OX:      {v.x * n.x + vy * n.y, - v.x * n.y + v.y * n.x, v.z}
+// вращаем {u,v,w} и {Bx, By, Bz}, остальные остаются на месте
+std::vector<double> MHDSolver2D::rotateStateFromAxisToNormal(vector<double> &U, const vector<double>& n) {
+    std::vector<double> res(U);
+    res[1] =  U[1]*n[0] + U[2]*n[1];
+    res[2] = -U[1]*n[1] + U[2]*n[0];
+    res[5] =  U[5]*n[0] + U[6]*n[1];
+    res[6] = -U[5]*n[1] + U[6]*n[0];
+    return res;
+}
+
+// ({cos(j), sin(j), 0}, {-sin(j), cos(j), 0}, {0,0,1}) --- around OZ clockwise
+// rotate 2: from OX to normal:      {v.x * n.x - vy * n.y,  v.x * n.y + v.y * n.x, v.z}
+std::vector<double> MHDSolver2D::rotateStateFromNormalToAxisX(vector<double> &U, const vector<double>& n) {
+    std::vector<double> res(U);
+    res[1] =  U[1]*n[0] - U[2]*n[1];
+    res[2] =  U[1]*n[1] + U[2]*n[0];
+    res[5] =  U[5]*n[0] - U[6]*n[1];
+    res[6] =  U[5]*n[1] + U[6]*n[0];
+    return res;
+}
+
 void MHDSolver2D::runSolver() {
     EdgePool edgePool = geometryWorld.getEdgePool();
     ElementPool elPool = geometryWorld.getElementPool();
@@ -67,37 +94,68 @@ void MHDSolver2D::runSolver() {
     NeighbourService ns = geometryWorld.getNeighbourService();
 
     // сделать старые дубликаты состояний (предыдущие состояния) чтобы в новые записывать расчёты
+    std::vector<std::vector<double>> elemUs_prev(elemUs);
+    std::vector<std::vector<double>> nodeUs_prev(nodeUs);
+    std::vector<std::vector<double>> edgeUs_prev(edgeUs);
 
+    std::vector<std::vector<double>> fluxes_temp(edgePool.edgeCount, std::vector<double>(8,0.0));
+
+
+    double tau = 0.0001; //TODO: подбирать tau из условия Куранта
+
+    //(2) вычисляем потоки, проходящие через каждое ребро
+    int count = 0; // TODO: для использования параллелек нужно в конструкторе проинициализировать флаксы сразу и разобраться, как брать номер итератора. мб вообще убрать итератор и стандартно по i делать цикл по эджам))
     for(const auto& edge : edgePool.edges){
         Node node1 = nodePool.getNode(edge.nodeInd1);
         Node node2 = nodePool.getNode(edge.nodeInd2);
         int neighbour1 = edge.neighbourInd1;
         int neighbour2 = edge.neighbourInd2;
-        std::vector<double> gasU1 = elemGasUs[neighbour1];
-        std::vector<double> gasU2 = elemGasUs[neighbour2];
-        std::vector<double> magU1 = elemMagUs[neighbour1];
-        std::vector<double> magU2 = elemMagUs[neighbour2];
-
-        // n = {cos(j), sin(j)} = {n.x, n.y}
-        // ({cos(j), -sin(j), 0}, {sin(j), cos(j), 0}, {0,0,1}) --- around OZ counterclockwise
-        // rotate 1: from normal to OX:      {v.x * n.x + vy * n.y, - v.x * n.y + v.y * n.x, v.z}
-        // ({cos(j), sin(j), 0}, {-sin(j), cos(j), 0}, {0,0,1}) --- around OZ clockwise
-        // rotate 2: from OX to normal:      {v.x * n.x - vy * n.y,  v.x * n.y + v.y * n.x, v.z}
-        // подбираем оптимальное число шага по времени (Курант хард ту килл)
-        // вычисляем потоки все на рёбрах
-        // далее идём по всем элементам
-            // вращаем газ (онли скорости), вращаем магнит
-            // собираем два состояния и кидаем в HLLD
-            // полученный поток вращаем обратно, записываем в потоки на рёбрах (проекция потока на элементе на нормаль одного и ребра это поток на ребре, умноженный на ориентацию)
-            // дальше явная схема: д/дт (u_i) * s_i + Sum(j = 1, 3) j_j vec{n}_j F_i = 0
-            // вычислили новое состояние, далее газ не трогаем
-            // теперь апдейтим магнит (чтобы чистенкая дивергенция была):
-                // д/дт (B_n) = (v_x*B_y - v_y*B_x)_a - (v_x*B_y - v_y*B_x)_b
-                // здесь компоненты магнита берём из узлов (среднее из соседей)
-                // b_n = b_x * n.x + b_y * n.y
-                // a - левый узел, b - правый узел ребра элемента
-            // обновлённый магнит записываем в массивы переменных
-        // идём дальше по времени (повтор пред шагов)
+        std::vector<double> U1 = rotateStateFromNormalToAxisX(elemUs[neighbour1], edge.normalVector);
+        if(neighbour2 > 0) {
+            std::vector<double> U2 = rotateStateFromNormalToAxisX(elemUs[neighbour2], edge.normalVector);
+            //fluxes.emplace_back(HLLD_flux(U1, U2, gam_hcr));
+            fluxes_temp[count] = HLLD_flux(U1, U2, gam_hcr);
+            rotateStateFromAxisToNormal(fluxes_temp[count] , edge.normalVector);
+        }
+        else{ //здесь задавать гран условие ещё мб на поток
+            fluxes_temp[count] = HLLD_flux(U1, U1, gam_hcr);
+            rotateStateFromAxisToNormal(fluxes_temp[count] , edge.normalVector);
+        }
+        ++count;
     }
 
+    //по явной схеме обновляем газовые величины
+    for(const auto& elem: elPool.elements){
+        int i = elem.ind;
+        std::vector<double> fluxSum(8, 0.0);
+        for(int edgeIndex : elem.edgeIndexes){
+            Edge edge_j = edgePool.edges[edgeIndex];
+            if(edge_j.neighbourInd1 == i){
+                fluxSum = fluxSum + edge_j.orientation * edge_j.length * fluxes_temp[edgeIndex];
+            }
+            else{
+                fluxSum = fluxSum - edge_j.orientation * edge_j.length * fluxes_temp[edgeIndex];
+            }
+        }
+        elemUs[i] = elemUs_prev[i] - tau/elem.area * fluxSum;
+    }
+
+    //корректируем магитные величины
+
 }
+
+// (1)подбираем оптимальное число шага по времени (Курант хард ту килл)
+// (2)вычисляем потоки все на рёбрах
+// (3)далее идём по всем элементам
+// (3.1)вращаем газ (онли скорости), вращаем магнит
+// (3.2)собираем два состояния и кидаем в HLLD
+// (3.3)полученный поток вращаем обратно, записываем в потоки на рёбрах (проекция потока на элементе на нормаль одного и ребра это поток на ребре, умноженный на ориентацию)
+// (3.4)дальше явная схема: д/дт (u_i) * s_i + Sum(j = 1, 3) l_j vec{n}_j F_i = 0
+// (3.5)вычислили новое состояние, далее газ не трогаем
+// (3.6)теперь апдейтим магнит (чтобы чистенкая дивергенция была):
+// (3.6.1)д/дт (B_n) = (v_x*B_y - v_y*B_x)_a - (v_x*B_y - v_y*B_x)_b
+// здесь компоненты магнита берём из поток на ребрах, которые прилегают к данной ноде
+// b_n = b_x * n.x + b_y * n.y
+// a - левый узел, b - правый узел ребра элемента
+// обновлённый магнит записываем в массивы переменных
+// идём дальше по времени (повтор пред шагов)

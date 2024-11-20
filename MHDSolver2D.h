@@ -5,8 +5,8 @@
 #ifndef MAGNETTOPRJCT_MHDSOLVER2D_H
 #define MAGNETTOPRJCT_MHDSOLVER2D_H
 
-#include "FileIO.h"
 #include "NetGeometry.h"
+#include "MHDSolver1D.h"
 
 class MHDSolver2D {
 
@@ -14,13 +14,17 @@ class MHDSolver2D {
     World geometryWorld;
 
     // physical quantities
-    std::vector<std::vector<double>> nodeGasUs; // gas U in nodes
-    std::vector<std::vector<double>> elemGasUs; // gas U in elements
-    std::vector<std::vector<double>> edgeGasUs; // gas U in edges
-    std::vector<std::vector<double>> nodeMagUs; // magnetic U in nodes
-    std::vector<std::vector<double>> elemMagUs; // magnetic U in elements
-    std::vector<std::vector<double>> edgeMagUs; // magnetic U in edges
+    double gam_hcr = 3.0/2.0;
+    //states
+    std::vector<std::vector<double>> nodeUs; // state U in nodes
+    std::vector<std::vector<double>> elemUs; // state U in elements
+    std::vector<std::vector<double>> edgeUs; // state U in edges
 
+    //fluxes
+    std::vector<std::vector<double>> fluxes;    // MHD (HLLD) fluxes (from one element to another "<| -> |>")
+
+    std::vector<double> rotateStateFromNormalToAxisX(std::vector<double>& U, const std::vector<double>& n);
+    std::vector<double> rotateStateFromAxisToNormal(std::vector<double>& U, const std::vector<double>& n);
     void runSolver();
 };
 

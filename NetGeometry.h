@@ -39,9 +39,10 @@ public:
     int neighbourInd1; //номер первого соседнего элемента
     int neighbourInd2; //номер второго соседнего элемента
     int orientation; // ориентация (по идее будет = 1 или = -1)
+    double length;
     std::vector<double> normalVector; // компоненты вектора нормали
     Edge(int index, int node1, int node2, int neighbor1, int neighbor2,
-         int orient, const std::vector<double>& normalVec);
+         int orient, double len, const std::vector<double>& normalVec);
 };
 
 // Элемент
@@ -85,15 +86,17 @@ public:
     int edgeCount;
     std::vector<Edge> edges;
     EdgePool(int size, const std::vector<Edge>& edgeVec);
-    EdgePool(const NodePool& np, const ElementPool& ep);
+    EdgePool(const NodePool& np, ElementPool& ep);
     EdgePool() : edgeCount(0), edges() {} // Default constructor
 };
 
 class NeighbourService {
 private:
-    std::unordered_map<int, std::unordered_set<int>> nodeToElements;
-    std::unordered_map<int, std::unordered_set<int>> elementToElements;
-    std::unordered_map<int, std::unordered_set<int>> edgeToElements;
+    std::unordered_map<int, std::unordered_set<int>> nodeToElements; // Nodes -> Elements
+    std::unordered_map<int, std::unordered_set<int>> edgeToElements; // Edges -> Elements
+    std::unordered_map<int, std::unordered_set<int>> elementToElements; // Elements -> Elements
+    std::unordered_map<int, std::unordered_set<int>> elementToEdges; // Elements -> Edges
+    std::unordered_map<int, std::unordered_set<int>> edgeToElementsMap; // Edges -> Elements
 
 public:
     NeighbourService(const NodePool& np, const ElementPool& ep, const EdgePool& edgePool);
@@ -101,6 +104,8 @@ public:
     std::unordered_set<int> getNodeNeighbours(int nodeIndex) const;
     std::unordered_set<int> getEdgeNeighbours(int edgeIndex) const;
     std::unordered_set<int> getElementNeighbours(int elementIndex) const;
+    std::unordered_set<int> getEdgesOfElement(int elementIndex) const;
+    std::unordered_set<int> getElementsOfEdge(int edgeIndex) const;
 
     void displayNeighbours() const;
 };
@@ -131,4 +136,7 @@ std::vector<double> getElementCentroid2D(const Element& poly, const NodePool& nP
 
 std::vector<double> getMidPoint2D(const int nodeInd1, const int nodeInd2, const NodePool& nPool);
 
+double getDistance(const int nodeInd1, const int nodeInd2, const NodePool& nPool);
+
+void setNeighbourEdge(Element& el, const int edgeInd);
 #endif // MAGNETTOPRJCT_NETGEOMETRY_H

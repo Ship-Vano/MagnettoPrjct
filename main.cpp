@@ -113,7 +113,7 @@ void tests1D(){
 
 int main() {
 
-    World world("InputData/mesh.txt");
+    World world("InputData/mesh4.txt");
     world.display();
 
     //solverHLL2D(world);

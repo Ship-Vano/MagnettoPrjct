@@ -11,6 +11,8 @@
 
 std::vector<double> state_from_primitive_vars(const double &rho, const double &u, const double &v, const double &w, const double &p, const double &Bx, const double &By, const double &Bz, const double &gam_hcr);
 
+std::vector<double> HLLD_flux(const std::vector<double>& U_L, const std::vector<double>& U_R, const double &gam_hcr);
+
 bool HLLScheme(const MHDProblem1D &problem, const std::string &filename ="HLLScheme");
 
 bool HLLCScheme(const MHDProblem1D &problem, const std::string &filename ="HLLCScheme");
