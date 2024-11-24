@@ -12,10 +12,10 @@ Element::Element(const int index, const std::vector<int> &nIndexes, int size)
         : ind(index), nodeIndexes(nIndexes), dim(size), edgeIndexes() {
 }
 
-Edge::Edge(int index, int node1, int node2, int neighbor1, int neighbor2, int orient, double len, const std::vector<double>& normalVec)
+Edge::Edge(int index, int node1, int node2, int neighbor1, int neighbor2, int orient, double len, const std::vector<double>& normalVec, const std::vector<double>& midP)
         : ind(index), nodeInd1(node1), nodeInd2(node2),
           neighbourInd1(neighbor1), neighbourInd2(neighbor2),
-          orientation(orient), length(len), normalVector(normalVec) {}
+          orientation(orient), length(len), normalVector(normalVec), midPoint(midP) {}
 
 
 double areaCalc(const Element& poly, const NodePool& nPool) {
@@ -145,25 +145,46 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
             }
         }
         int orientation = 1;
-        std::vector<double> normalVector = calculateNormalVector2D(np.getNode(node1), np.getNode(node2));  // You can compute the normal vector if needed
         if(neighbor1 == -1){
             std::swap(neighbor1,neighbor2);
+           // std::swap(node1, node2);
         }
+        std::vector<double> normalVector = calculateNormalVector2D(np.getNode(node1), np.getNode(node2));
         std::vector<double> edgeMid = getMidPoint2D(node1, node2, np);
+        //std::cout << "CENTROID OF THE EL numb " << neighbor1 << " , centroid = (" << getElementCentroid2D(ep.elements[neighbor1], np)[0] << ", " <<getElementCentroid2D(ep.elements[neighbor1], np)[1]  <<") " << std::endl;
         std::vector<double> neighbour1ToEdgeMidVector =
                     edgeMid - getElementCentroid2D(ep.elements[neighbor1], np);
         orientation = normalVector * neighbour1ToEdgeMidVector > 0 ? 1 : -1;
         if(orientation < 0){
-            normalVector = normalVector * orientation;
-            std::swap(neighbor1, neighbor2);
+            normalVector = normalVector * (-1);
+//            std::cout << "negative!" << std::endl;
+//            std::cout << "Node1 = " << node1 << ", Node2 = " << node2 << " Neigh1 = " << neighbor1 << " Neigh2 = " << neighbor2 << std::endl;
+           // std::swap(node1, node2);
+            //std::swap(neighbor1, neighbor2);
             orientation = 1;
         }
         else{
-            std::swap(node1, node2);
+           // std::swap(node1, node2);
+//            std::cout << "positive!" << std::endl;
+//            std::cout << "Node1 = " << node1 << ", Node2 = " << node2 << " Neigh1 = " << neighbor1 << " Neigh2 = " << neighbor2 << std::endl;
         }
+
+        const auto &elementNodes = ep.elements[neighbor1].nodeIndexes;
+        auto itNode1 = std::find(elementNodes.begin(), elementNodes.end(), node1);
+        auto itNode2 = std::find(elementNodes.begin(), elementNodes.end(), node2);
+
+        if ((itNode1 > itNode2) && !(itNode1 == elementNodes.end()-1 && itNode2 == elementNodes.begin()) ) {
+            std::swap(node1, node2); // Swap nodes to ensure counterclockwise order
+            std::cout << "swap1 EdgeIndex is " << edgeIndex << std::endl;
+        }
+        else if(itNode2 == elementNodes.end()-1 && itNode1 == elementNodes.begin()){
+            std::swap(node1, node2);
+            std::cout << "swap2 EdgeIndex is " << edgeIndex << std::endl;
+        }
+
         double len = getDistance(node1, node2, np);
         // Create the edge and add it to the list
-        edges.emplace_back(edgeIndex, node1, node2, neighbor1, neighbor2, orientation, len, normalVector);
+        edges.emplace_back(edgeIndex, node1, node2, neighbor1, neighbor2, orientation, len, normalVector, edgeMid);
 
         // Update edge indexes for the neighbors
 //        if (neighbor1 != -1) {
@@ -418,7 +439,7 @@ void World::display() const {
                   << "Neighbors: (" << edge.neighbourInd1 << ", " << edge.neighbourInd2 << ")"
                   << ", Orientation: " << edge.orientation << ", Normal: ("
                   << edge.normalVector[0] << ", " << edge.normalVector[1] << "), len = "
-                  << edge.length << std::endl;
+                  << edge.length << ", MidPoint = ("<< edge.midPoint[0] << ", "<< edge.midPoint[1] << ")"<<std::endl;
     }
 
     // Display Neighbor Information for Nodes, Edges, and Elements
