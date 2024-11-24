@@ -171,25 +171,23 @@ void MHDSolver2D::runSolver() {
             Edge edge = edgePool.edges[edgeInd];
             if(edge.neighbourInd1 == elem.ind) {
                 // у первого соседа в эдже заданы ноды в порядке полодительного обхода и нормаль тоже
-
-                // Node node_before = nodePool.getNode(); //x_{i-1}//nodeInd == 0 ? elem.dim-1 : nodeInd - 1
-                //elemUs[elem.ind][5] += bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[0] - )
+                const auto nodeInElemeInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(), edge.nodeInd1);
+                int node_before_ind =  nodeInElemeInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim-1] :  *(nodeInElemeInd-1);
+                //        auto itNode1 = std::find(elementNodes.begin(), elementNodes.end(), node1);
+                Node node_before = nodePool.getNode(node_before_ind);
+                elemUs[elem.ind][5] += bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[0] - node_before.x);
+                elemUs[elem.ind][6] += bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[1] - node_before.y);
             }
             else{
-                // а вот для второго нужно умножать на (-1)
+                // а вот для второго нужно умножать на -1 и в обратном порядке
+                const auto nodeInElemeInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(), edge.nodeInd2);
+                int node_before_ind =  nodeInElemeInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim-1] :  *(nodeInElemeInd-1);
+                //        auto itNode1 = std::find(elementNodes.begin(), elementNodes.end(), node2);
+                Node node_before = nodePool.getNode(node_before_ind);
+                elemUs[elem.ind][5] -= bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[0] - node_before.x);
+                elemUs[elem.ind][6] -= bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[1] - node_before.y);
             }
         }
-//        for(const auto& nodeInd: elem.nodeIndexes){
-//            int nodeInd_after = (nodeInd +1) % elem.dim;//????????????
-//            int nodeInd_before = nodeInd == 0 ? elem.dim-1 : nodeInd - 1; //??????????
-//            double dist = getDistance(nodeInd, nodeInd_after, nodePool);
-//            std::vector<double> centroid = getElementCentroid2D(elem, nodePool);
-//            //Bx
-//            //edgeInd а не nodeInd
-//            elemUs[elem.ind][5] += bNs[nodeInd] * dist * (centroid[0] - nodePool.getNode(nodeInd_before).x) / (2*elem.area);
-//            //By
-//            elemUs[elem.ind][6] += bNs[nodeInd] * dist * (centroid[1] - nodePool.getNode(nodeInd_before).y) / (2*elem.area);
-//        }
     }
 }
 

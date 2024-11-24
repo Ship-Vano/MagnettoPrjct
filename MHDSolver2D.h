@@ -23,8 +23,8 @@ class MHDSolver2D {
     //fluxes
     std::vector<std::vector<double>> fluxes;    // MHD (HLLD) fluxes (from one element to another "<| -> |>")
 
-    std::vector<double> rotateStateFromNormalToAxisX(std::vector<double>& U, const std::vector<double>& n);
-    std::vector<double> rotateStateFromAxisToNormal(std::vector<double>& U, const std::vector<double>& n);
+    static std::vector<double> rotateStateFromNormalToAxisX(std::vector<double>& U, const std::vector<double>& n);
+    static std::vector<double> rotateStateFromAxisToNormal(std::vector<double>& U, const std::vector<double>& n);
     void runSolver();
 };
 
