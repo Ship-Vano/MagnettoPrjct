@@ -9,7 +9,7 @@ Node::Node(int index, double xCoord, double yCoord, double zCoord)
         : ind(index), x(xCoord), y(yCoord), z(zCoord) {}
 
 Element::Element(const int index, const std::vector<int> &nIndexes, int size)
-        : ind(index), nodeIndexes(nIndexes), dim(size), edgeIndexes() {
+        : ind(index), nodeIndexes(nIndexes), dim(size), edgeIndexes(), centroid2D() {
 }
 
 Edge::Edge(int index, int node1, int node2, int neighbor1, int neighbor2, int orient, double len, const std::vector<double>& normalVec, const std::vector<double>& midP)
@@ -153,7 +153,7 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
         std::vector<double> edgeMid = getMidPoint2D(node1, node2, np);
         //std::cout << "CENTROID OF THE EL numb " << neighbor1 << " , centroid = (" << getElementCentroid2D(ep.elements[neighbor1], np)[0] << ", " <<getElementCentroid2D(ep.elements[neighbor1], np)[1]  <<") " << std::endl;
         std::vector<double> neighbour1ToEdgeMidVector =
-                    edgeMid - getElementCentroid2D(ep.elements[neighbor1], np);
+                    edgeMid - ep.elements[neighbor1].centroid2D;
         orientation = normalVector * neighbour1ToEdgeMidVector > 0 ? 1 : -1;
         if(orientation < 0){
             normalVector = normalVector * (-1);
@@ -202,7 +202,8 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
 
 ElementPool::ElementPool(int nodesPerElement, int elCnt, const std::vector<Element>& elems)
         : elCount(elCnt), isSquare(nodesPerElement == SQUARE_ELEMENT_NODE_COUNT),
-          isTriangular(nodesPerElement == TRIANGULAR_ELEMENT_NODE_COUNT), elements(elems) {}
+          isTriangular(nodesPerElement == TRIANGULAR_ELEMENT_NODE_COUNT), elements(elems) {
+}
 
 void World::setNodePool(const NodePool& np) {
     this->np = np;
@@ -385,12 +386,15 @@ World::World(const std::string& fileName) : np(), ep(), edgp(), ns(np, ep, edgp)
 
     np = NodePool(nodes.size(), nodes);
     ep = ElementPool(nodes[0].ind, elements.size(), elements); // Assuming nodes[0].ind is the nodesPerElement
-    edgp = EdgePool(np, ep);  // Construct edges based on NodePool and ElementPool
-    ns = NeighbourService(np, ep, edgp);
 
     for(int i = 0; i < ep.elCount; ++i){
         ep.elements[i].area = areaCalc(ep.elements[i], np);
+        ep.elements[i].centroid2D = getElementCentroid2D(ep.elements[i], np);
     }
+
+    edgp = EdgePool(np, ep);  // Construct edges based on NodePool and ElementPool
+    ns = NeighbourService(np, ep, edgp);
+
 
     for(auto& element: ep.elements){
         for(int i = 0; i < element.dim; ++i){

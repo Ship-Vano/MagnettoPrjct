@@ -7,6 +7,7 @@
 #include <format>
 #include <string>
 #include <string_view>
+#include<random>
 
 void tests1D(){
     std::vector<double> BrioWu_L1{1., 0., 0., 0., 1., 0.75, 1., 0.};
@@ -113,9 +114,23 @@ void tests1D(){
 
 int main() {
 
-    World world("InputData/mesh4.txt");
+    World world("InputData/mesh.txt");
     world.display();
 
+    MHDSolver2D solver(world);
+    solver.runSolver();
+    writeVTU("output.vtu", world, solver.elemUs);
+//    std::vector<std::vector<double>> elemUs(world.getElementPool().elCount, std::vector<double>(1, 0.0));
+//    std::random_device rd;  // Seed for the random number generator
+//    std::mt19937 gen(rd()); // Standard mersenne_twister_engine
+//    std::uniform_real_distribution<> dis(0, 100); // Uniform distribution in [minValue, maxValue]
+//
+//    for (auto& state : elemUs) {
+//        for (auto& value : state) {
+//            value = dis(gen); // Generate a random value
+//        }
+//    }
+   // writeVTU("output.vtu", world, elemUs);
     //solverHLL2D(world);
 //    Node node1 = Node(0, 1.0,52.0,-13.0);
 //    Node node2 = Node(1, 10.0, 200.0 ,-2.);

@@ -54,6 +54,7 @@ public:
     int dim; // размерность (кол-во узлов)
     std::vector<int> nodeIndexes; //номера узлов
     std::vector<int> edgeIndexes; //номера рёбер
+    std::vector<double> centroid2D;
     double area = 0.; //площадь
     Element(const int index, const std::vector<int> &nIndexes, int size);
 };

@@ -3,7 +3,6 @@ project(MagnettoPrjct LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_subdirectory( vtu11 )
 
 add_executable(MagnettoPrjct
         main.cpp
@@ -22,4 +21,3 @@ add_executable(MagnettoPrjct
         NetGeometry.h
         NamesNConstants.h
         NamesNConstants.h)
-target_link_libraries( MagnettoPrjct PRIVATE vtu11::vtu11 )

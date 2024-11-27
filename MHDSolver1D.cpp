@@ -57,6 +57,13 @@ state_from_primitive_vars(const double &rho, const double &u, const double &v, c
     return U;
 }
 
+std::vector<double> state_from_primitive_vars(const std::vector<double>& primitiveVars){
+    /*rho  u   v   w   p   Bx   By   Bz  gam_hcr*/
+    return state_from_primitive_vars(primitiveVars[0], primitiveVars[1], primitiveVars[2],
+                                     primitiveVars[3], primitiveVars[4], primitiveVars[5],
+                                     primitiveVars[6], primitiveVars[7], primitiveVars[8]);
+}
+
 // Определяем МГД-поток (из состояния)
 std::vector<double> MHD_flux(const std::vector<double>& U, const double &gam_hcr) {
     double rho = U[0];
