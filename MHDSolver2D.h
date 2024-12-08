@@ -14,9 +14,9 @@ public:
     World geometryWorld;
 
     // physical quantities
-    double gam_hcr = 3.0/2.0;
+    double gam_hcr = 2.0;
     double startTime = 0.0;  // время отсчёта
-    double finalTime = 0.01;   // время окончания
+    double finalTime = 0.1;   // время окончания
     double tau = 0.0001; // шаг по времени
     double cflNum = 0.4; // число Куранта
     int MAX_ITERATIONS = 10000;

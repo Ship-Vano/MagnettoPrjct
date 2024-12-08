@@ -87,8 +87,13 @@ void MHDSolver2D::runSolver() {
 
     // инициализируем вектор потоков через рёбра // MHD (HLLD) fluxes (from one element to another "<| -> |>")
     std::vector<std::vector<double>> fluxes(edgePool.edgeCount, std::vector<double>(8, 0.0));
+    std::vector<std::vector<double>> unrotated_fluxes(edgePool.edgeCount, std::vector<double>(8, 0.0));
 
     double h = edgePool.edges[0].length;
+    if(h > edgePool.minEdgeLen){
+        h = edgePool.minEdgeLen;
+    }
+    std::cout << "Min h = " << h << std::endl;
 
     double currentTime = startTime;
 
@@ -99,11 +104,16 @@ void MHDSolver2D::runSolver() {
         nodeUs_prev.swap(nodeUs);
         edgeUs_prev.swap(edgeUs);
 
-        tau = tau_from_cfl(cflNum, h, elemUs, elPool.elCount, gam_hcr);
+        tau = 0.1 * tau_from_cfl(cflNum, h, elemUs, elPool.elCount, gam_hcr);
         currentTime += tau;
+        if(currentTime > finalTime){
+            tau -= (currentTime - finalTime);
+            currentTime = finalTime;
+        }
+        //std::cout << "t = "<< currentTime << std::endl;
 
         //(2) вычисляем потоки, проходящие через каждое ребро
-        int count = 0; // TODO: для использования параллелек нужно в конструкторе проинициализировать флаксы сразу и разобраться, как брать номер итератора. мб вообще убрать итератор и стандартно по i делать цикл по эджам))
+        int count = 0;
         for (const auto &edge: edgePool.edges) {
             Node node1 = nodePool.getNode(edge.nodeInd1);
             Node node2 = nodePool.getNode(edge.nodeInd2);
@@ -114,13 +124,16 @@ void MHDSolver2D::runSolver() {
                 std::vector<double> U2 = rotateStateFromNormalToAxisX(elemUs[neighbour2], edge.normalVector);
                 //fluxes.emplace_back(HLLD_flux(U1, U2, gam_hcr));
                 fluxes[count] = HLLD_flux(U1, U2, gam_hcr);
-                rotateStateFromAxisToNormal(fluxes[count], edge.normalVector);
+                unrotated_fluxes[count] = HLLD_flux(U1, U2, gam_hcr);
+                fluxes[count] = rotateStateFromAxisToNormal(fluxes[count], edge.normalVector);
             } else { //здесь задавать гран условие ещё мб на поток
                 fluxes[count] = HLLD_flux(U1, U1, gam_hcr);
-                rotateStateFromAxisToNormal(fluxes[count], edge.normalVector);
+                unrotated_fluxes[count] = HLLD_flux(U1, U1, gam_hcr);
+                fluxes[count] = rotateStateFromAxisToNormal(fluxes[count], edge.normalVector);
             }
             ++count;
         }
+
 
         //по явной схеме обновляем газовые величины
         for (const auto &elem: elPool.elements) {
@@ -130,7 +143,7 @@ void MHDSolver2D::runSolver() {
                 Edge edge_j = edgePool.edges[edgeIndex];
                 if (edge_j.neighbourInd1 == i) {
                     fluxSum = fluxSum + edge_j.length * fluxes[edgeIndex];
-                } else {
+                } else if (edge_j.neighbourInd2 == i){
                     fluxSum = fluxSum - edge_j.length * fluxes[edgeIndex];
                 }
             }
@@ -143,7 +156,7 @@ void MHDSolver2D::runSolver() {
         for (const auto &node: nodePool.nodes) {
             int tmp_count = 0;
             for (const auto &neighbourEdgeInd: ns.getEdgeNeighborsOfNode(node.ind)) {
-                nodeMagDiffs[node.ind] += fluxes[neighbourEdgeInd][6];
+                nodeMagDiffs[node.ind] += unrotated_fluxes[neighbourEdgeInd][6];
                 ++tmp_count;
             }
             if (tmp_count) {
@@ -155,10 +168,9 @@ void MHDSolver2D::runSolver() {
         std::vector<double> bNs_prev(bNs);
         for (int i = 0; i < edgePool.edgeCount; ++i) {
             Edge edge = edgePool.edges[i];
-            bNs[i] = bNs_prev[i] - tau / edge.length * (nodeMagDiffs[edge.nodeInd2] -
-                                                        nodeMagDiffs[edge.nodeInd1]); //возможно, здесь знак надо учесть
+            bNs[i] = bNs_prev[i] + tau / edge.length * (nodeMagDiffs[edge.nodeInd1] -
+                                                        nodeMagDiffs[edge.nodeInd2]);
         }
-
 
         //сносим Bn в центр элемента
         for (const auto &elem: elPool.elements) {
@@ -169,22 +181,22 @@ void MHDSolver2D::runSolver() {
                 Edge edge = edgePool.edges[edgeInd];
                 if (edge.neighbourInd1 == elem.ind) {
                     // у первого соседа в эдже заданы ноды в порядке полодительного обхода и нормаль тоже
-                    const auto nodeInElemeInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(),
-                                                          edge.nodeInd1);
+                    const auto nodeInElemInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(),
+                                                         edge.nodeInd1);
                     int node_before_ind =
-                            nodeInElemeInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim - 1] : *(
-                                    nodeInElemeInd - 1);
+                            nodeInElemInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim - 1] : *(
+                                    nodeInElemInd - 1);
                     //        auto itNode1 = std::find(elementNodes.begin(), elementNodes.end(), node1);
                     Node node_before = nodePool.getNode(node_before_ind);
                     elemUs[elem.ind][5] += bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[0] - node_before.x);
                     elemUs[elem.ind][6] += bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[1] - node_before.y);
                 } else {
                     // а вот для второго нужно умножать на -1 и в обратном порядке
-                    const auto nodeInElemeInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(),
-                                                          edge.nodeInd2);
+                    const auto nodeInElemInd = std::find(elem.nodeIndexes.begin(), elem.nodeIndexes.end(),
+                                                         edge.nodeInd2);
                     int node_before_ind =
-                            nodeInElemeInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim - 1] : *(
-                                    nodeInElemeInd - 1);
+                            nodeInElemInd == elem.nodeIndexes.begin() ? elem.nodeIndexes[elem.dim - 1] : *(
+                                    nodeInElemInd - 1);
                     //        auto itNode1 = std::find(elementNodes.begin(), elementNodes.end(), node2);
                     Node node_before = nodePool.getNode(node_before_ind);
                     elemUs[elem.ind][5] -= bNs[edgeInd] * edge.length / (2 * elem.area) * (centroid[0] - node_before.x);
@@ -193,10 +205,24 @@ void MHDSolver2D::runSolver() {
             }
         }
         ++iterations;
+        int elemNum = 0;
+        for(const auto& u: elemUs){
+            for(const auto& val: u){
+                if(std::isnan(val)){
+                    std::cout << "found a nan value!" << std::endl;
+                    std::cout << "ElemNum = " << elemNum << std::endl;
+                    std::cin.get();
+                }
+            }
+            ++elemNum;
+        }
+
         if(iterations > MAX_ITERATIONS){
             break;
         }
     }
+
+    std::cin.get();
 }
 
 // (1)подбираем оптимальное число шага по времени (Курант хард ту килл)

@@ -117,7 +117,7 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
     //!!!!!!!!!TODO:убрать бред с кастомом и добавить boost:hash
     std::unordered_map<std::pair<int, int>, std::unordered_set<int>, std::hash<std::pair<int, int>>> edgeMap;
     int edgeIndex = 0;
-
+    minEdgeLen = 10000000.0;
     // Loop through each element to create edges
     for (const auto& element : ep.elements) {
         int dim = element.dim;
@@ -147,7 +147,6 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
         int orientation = 1;
         if(neighbor1 == -1){
             std::swap(neighbor1,neighbor2);
-           // std::swap(node1, node2);
         }
         std::vector<double> normalVector = calculateNormalVector2D(np.getNode(node1), np.getNode(node2));
         std::vector<double> edgeMid = getMidPoint2D(node1, node2, np);
@@ -157,16 +156,7 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
         orientation = normalVector * neighbour1ToEdgeMidVector > 0 ? 1 : -1;
         if(orientation < 0){
             normalVector = normalVector * (-1);
-//            std::cout << "negative!" << std::endl;
-//            std::cout << "Node1 = " << node1 << ", Node2 = " << node2 << " Neigh1 = " << neighbor1 << " Neigh2 = " << neighbor2 << std::endl;
-           // std::swap(node1, node2);
-            //std::swap(neighbor1, neighbor2);
             orientation = 1;
-        }
-        else{
-           // std::swap(node1, node2);
-//            std::cout << "positive!" << std::endl;
-//            std::cout << "Node1 = " << node1 << ", Node2 = " << node2 << " Neigh1 = " << neighbor1 << " Neigh2 = " << neighbor2 << std::endl;
         }
 
         const auto &elementNodes = ep.elements[neighbor1].nodeIndexes;
@@ -175,24 +165,19 @@ EdgePool::EdgePool(const NodePool& np, ElementPool& ep) {
 
         if ((itNode1 > itNode2) && !(itNode1 == elementNodes.end()-1 && itNode2 == elementNodes.begin()) ) {
             std::swap(node1, node2); // Swap nodes to ensure counterclockwise order
-            std::cout << "swap1 EdgeIndex is " << edgeIndex << std::endl;
+            //std::cout << "swap1 EdgeIndex is " << edgeIndex << std::endl;
         }
         else if(itNode2 == elementNodes.end()-1 && itNode1 == elementNodes.begin()){
             std::swap(node1, node2);
-            std::cout << "swap2 EdgeIndex is " << edgeIndex << std::endl;
+            //std::cout << "swap2 EdgeIndex is " << edgeIndex << std::endl;
         }
 
         double len = getDistance(node1, node2, np);
+        if(len < minEdgeLen){
+            minEdgeLen = len;
+        }
         // Create the edge and add it to the list
         edges.emplace_back(edgeIndex, node1, node2, neighbor1, neighbor2, orientation, len, normalVector, edgeMid);
-
-        // Update edge indexes for the neighbors
-//        if (neighbor1 != -1) {
-//            ep.elements[neighbor1].edgeIndexes.push_back(edgeIndex);
-//        }
-//        if (neighbor2 != -1) {
-//            ep.elements[neighbor2].edgeIndexes.push_back(edgeIndex);
-//        }
 
         ++edgeIndex;
     }

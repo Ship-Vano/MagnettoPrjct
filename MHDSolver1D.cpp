@@ -457,7 +457,11 @@ double tau_from_cfl(const double& sigma, const double& h, const std::vector<std:
             max_speed = current_speed;
         }
     }
-    return sigma * h / max_speed;
+    double optimalTau = sigma * h;
+    if(max_speed > 0.0){
+        optimalTau /= max_speed;
+    }
+    return optimalTau;
 }
 
 bool HLLScheme(const MHDProblem1D &problem, const std::string &filename) {

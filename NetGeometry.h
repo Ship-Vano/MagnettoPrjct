@@ -88,9 +88,10 @@ class EdgePool{
 public:
     int edgeCount;
     std::vector<Edge> edges;
+    double minEdgeLen;
     EdgePool(int size, const std::vector<Edge>& edgeVec);
     EdgePool(const NodePool& np, ElementPool& ep);
-    EdgePool() : edgeCount(0), edges() {} // Default constructor
+    EdgePool() : edgeCount(0), edges(), minEdgeLen(1.0) {} // Default constructor
 };
 
 class NeighbourService {

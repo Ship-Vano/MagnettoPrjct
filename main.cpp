@@ -114,31 +114,13 @@ void tests1D(){
 
 int main() {
 
-    World world("InputData/mesh.txt");
-    world.display();
+    World world("InputData/mesh005.txt");
+    //world.display();
 
     MHDSolver2D solver(world);
     solver.runSolver();
-    writeVTU("output.vtu", world, solver.elemUs);
-//    std::vector<std::vector<double>> elemUs(world.getElementPool().elCount, std::vector<double>(1, 0.0));
-//    std::random_device rd;  // Seed for the random number generator
-//    std::mt19937 gen(rd()); // Standard mersenne_twister_engine
-//    std::uniform_real_distribution<> dis(0, 100); // Uniform distribution in [minValue, maxValue]
-//
-//    for (auto& state : elemUs) {
-//        for (auto& value : state) {
-//            value = dis(gen); // Generate a random value
-//        }
-//    }
-   // writeVTU("output.vtu", world, elemUs);
-    //solverHLL2D(world);
-//    Node node1 = Node(0, 1.0,52.0,-13.0);
-//    Node node2 = Node(1, 10.0, 200.0 ,-2.);
-//    Node node3 = Node(2, -100.5, 1.0, -222);
-//    NodePool np = NodePool(3, {node1, node2, node3});
-//    Element el = Element(0, {0,1,2}, 3);
-//    double area =  areaCalc(el, np);
-//    std::cout << area << std::endl;
-    //printf("The area is S = %f", area);
+    writeVTU("OutputData/2D/output005.vtu", world, solver.elemUs);
+    std::cout << "solver complete" << std::endl;
+
     return 0;
 }
