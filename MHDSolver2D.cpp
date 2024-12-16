@@ -4,8 +4,40 @@
 
 #include "MHDSolver2D.h"
 
+
 MHDSolver2D::MHDSolver2D(const World &world): geometryWorld(world), nodeUs(),
     elemUs(), edgeUs(), initElemUs(), initBns(), bNs(){}
+
+double tau_from_cfl2D(const double& sigma, const double& hx, const double& hy, const size_t n,
+                      const std::vector<std::vector<double>>& states, const double& gam_hcr){
+
+    // sigma * min ({(|u|+cf_max)/dx + (|v|+cf_max)/dy}^-1)
+    double u = std::fabs(states[0][1] / states[0][0]);
+    double v = std::fabs(states[0][2] / states[0][0]);
+    double u_max = u;
+    double v_max = v;
+    double cf = cfast(states[0], gam_hcr);
+    double cf_max = cf;
+#pragma parallel for
+    for(int i = 1; i < n; ++i){
+        cf = cfast(states[i], gam_hcr);
+#pragma omp critical
+        if (cf > cf_max){
+            cf_max = cf;
+        }
+        u = std::fabs(states[i][1] / states[i][0]);
+#pragma omp critical
+        if (u > u_max){
+            u_max = u;
+        }
+        v = std::fabs(states[i][2] / states[i][0]);
+#pragma omp critical
+        if (v > v_max){
+            v_max = v;
+        }
+    }
+    return sigma / ( (u_max+cf_max)/hx + (v_max+cf_max)/hy );
+}
 
 /*вращения*/
 // n = {cos(j), sin(j)} = {n.x, n.y}
@@ -68,6 +100,8 @@ void MHDSolver2D::setInitElemUs() {
 
 void MHDSolver2D::runSolver() {
 
+    omp_set_num_threads(omp_get_max_threads());
+
     setInitElemUs();
 
     // service
@@ -104,13 +138,13 @@ void MHDSolver2D::runSolver() {
         nodeUs_prev.swap(nodeUs);
         edgeUs_prev.swap(edgeUs);
 
-        tau = 0.1 * tau_from_cfl(cflNum, h, elemUs, elPool.elCount, gam_hcr);
+        tau = tau_from_cfl2D(cflNum, h, h, elPool.elCount, elemUs, gam_hcr);
         currentTime += tau;
         if(currentTime > finalTime){
             tau -= (currentTime - finalTime);
             currentTime = finalTime;
         }
-        //std::cout << "t = "<< currentTime << std::endl;
+        std::cout << "t = "<< currentTime << std::endl;
 
         //(2) вычисляем потоки, проходящие через каждое ребро
         int count = 0;
@@ -136,6 +170,7 @@ void MHDSolver2D::runSolver() {
 
 
         //по явной схеме обновляем газовые величины
+        #pragma omp parallel for
         for (const auto &elem: elPool.elements) {
             int i = elem.ind;
             std::vector<double> fluxSum(8, 0.0);
@@ -153,6 +188,7 @@ void MHDSolver2D::runSolver() {
         //корректируем магитные величины
         //находим узловые значения нужных магнитных разностей //(v x B)z в узлах
         std::vector<double> nodeMagDiffs(nodePool.nodeCount, 0.0); //(v x B)z в узлах
+#pragma omp parallel for
         for (const auto &node: nodePool.nodes) {
             int tmp_count = 0;
             for (const auto &neighbourEdgeInd: ns.getEdgeNeighborsOfNode(node.ind)) {
@@ -173,6 +209,7 @@ void MHDSolver2D::runSolver() {
         }
 
         //сносим Bn в центр элемента
+#pragma omp parallel for
         for (const auto &elem: elPool.elements) {
             elemUs[elem.ind][5] = 0.0;
             elemUs[elem.ind][6] = 0.0;
@@ -218,29 +255,15 @@ void MHDSolver2D::runSolver() {
         }
 
         if(iterations > MAX_ITERATIONS){
+            writeVTU("OutputData/2D/output005.vtu", geometryWorld, elemUs);
+            std::cout << "iterations limit!" << std::endl;
             break;
         }
+
     }
 
-    std::cin.get();
+    //std::cin.get();
 }
-
-// (1)подбираем оптимальное число шага по времени (Курант хард ту килл)
-// (2)вычисляем потоки все на рёбрах
-// (3)далее идём по всем элементам
-// (3.1)вращаем газ (онли скорости), вращаем магнит
-// (3.2)собираем два состояния и кидаем в HLLD
-// (3.3)полученный поток вращаем обратно, записываем в потоки на рёбрах (проекция потока на элементе на нормаль одного и ребра это поток на ребре, умноженный на ориентацию)
-// (3.4)дальше явная схема: д/дт (u_i) * s_i + Sum(j = 1, 3) l_j vec{n}_j F_i = 0
-// (3.5)вычислили новое состояние, далее газ не трогаем
-// (3.6)теперь апдейтим магнит (чтобы чистенкая дивергенция была):
-// (3.6.1)д/дт (B_n) = (v_x*B_y - v_y*B_x)_a - (v_x*B_y - v_y*B_x)_b
-// здесь компоненты магнита берём из поток на ребрах, которые прилегают к данной ноде
-// b_n = b_x * n.x + b_y * n.y
-// a - левый узел, b - правый узел ребра элемента
-// обновлённый магнит записываем в массивы переменных
-// идём дальше по времени (повтор пред шагов)
-
 
 
 void writeVTU(const std::string& filename, const World& geometryWorld, const std::vector<std::vector<double>>& elemUs) {
@@ -321,69 +344,5 @@ void writeVTU(const std::string& filename, const World& geometryWorld, const std
 }
 
 
-void writeUnstructuredVTU(const std::string& filename,
-                          const std::vector<std::array<double, 3>>& points,
-                          const std::vector<std::vector<int>>& connectivity,
-                          const std::vector<int>& cellTypes,
-                          const std::vector<double>& cellValues) {
-    std::ofstream file(filename);
-    file << "<?xml version=\"1.0\"?>\n";
-    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
-    file << "<UnstructuredGrid>\n";
-    file << "  <Piece NumberOfPoints=\"" << points.size() << "\" NumberOfCells=\"" << connectivity.size() << "\">\n";
-
-    // Write Points
-    file << "    <Points>\n";
-    file << "      <DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (const auto& p : points) {
-        file << p[0] << " " << p[1] << " " << p[2] << "\n";
-    }
-    file << "      </DataArray>\n";
-    file << "    </Points>\n";
-
-    // Write Cells
-    file << "    <Cells>\n";
-
-    // Connectivity
-    file << "      <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (const auto& cell : connectivity) {
-        for (int index : cell) {
-            file << index << " ";
-        }
-        file << "\n";
-    }
-    file << "      </DataArray>\n";
-
-    // Offsets
-    file << "      <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
-    int offset = 0;
-    for (const auto& cell : connectivity) {
-        offset += cell.size();
-        file << offset << "\n";
-    }
-    file << "      </DataArray>\n";
-
-    // Cell Types
-    file << "      <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n";
-    for (int type : cellTypes) {
-        file << type << "\n";
-    }
-    file << "      </DataArray>\n";
-
-    file << "    </Cells>\n";
-
-    // Write Cell Data (Scalar Values)
-    file << "    <CellData Scalars=\"Values\">\n";
-    file << "      <DataArray type=\"Float64\" Name=\"Value\" format=\"ascii\">\n";
-    for (double value : cellValues) {
-        file << value << "\n";
-    }
-    file << "      </DataArray>\n";
-    file << "    </CellData>\n";
-
-    file << "  </Piece>\n";
-    file << "</UnstructuredGrid>\n";
-    file << "</VTKFile>\n";
-}
 
 

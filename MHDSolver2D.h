@@ -7,6 +7,7 @@
 
 #include "NetGeometry.h"
 #include "MHDSolver1D.h"
+#include "omp.h"
 
 class MHDSolver2D {
 public:
@@ -18,8 +19,8 @@ public:
     double startTime = 0.0;  // время отсчёта
     double finalTime = 0.1;   // время окончания
     double tau = 0.0001; // шаг по времени
-    double cflNum = 0.4; // число Куранта
-    int MAX_ITERATIONS = 10000;
+    double cflNum = 0.2; // число Куранта
+    int MAX_ITERATIONS = 100000;
 
     //states
     std::vector<std::vector<double>> nodeUs; // state U in nodes

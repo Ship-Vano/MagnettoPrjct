@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include<random>
+#include <cassert>
 
 void tests1D(){
     std::vector<double> BrioWu_L1{1., 0., 0., 0., 1., 0.75, 1., 0.};
@@ -112,7 +113,112 @@ void tests1D(){
 //    }
 }
 
+
+/* ТЕСТЫ ГЕОМЕТРИИ*/
+void testNode() {
+    Node n(0, 1.0, 2.0, 3.0);
+    assert(n.ind == 0);
+    assert(n.x == 1.0);
+    assert(n.y == 2.0);
+    assert(n.z == 3.0);
+    std::cout << "Node test passed!" << std::endl;
+}
+void testElement() {
+    std::vector<int> nodeIndexes = {0, 1, 2};
+    Element e(0, nodeIndexes, 3);
+    assert(e.ind == 0);
+    assert(e.nodeIndexes == nodeIndexes);
+    assert(e.dim == 3);
+    std::cout << "Element test passed!" << std::endl;
+}
+void testEdge() {
+    std::vector<double> normalVec = {0.0, 1.0};
+    std::vector<double> midP = {0.5, 1.5};
+    Edge e(0, 0, 1, -1, -1, 1, 1.0, normalVec, midP);
+    assert(e.ind == 0);
+    assert(e.nodeInd1 == 0);
+    assert(e.nodeInd2 == 1);
+    assert(e.neighbourInd1 == -1);
+    assert(e.neighbourInd2 == -1);
+    assert(e.orientation == 1);
+    assert(e.length == 1.0);
+    assert(e.normalVector == normalVec);
+    assert(e.midPoint == midP);
+    std::cout << "Edge test passed!" << std::endl;
+}
+void testAreaCalc() {
+    std::vector<Node> nodes = {
+            Node(0, 0.0, 0.0, 0.0),
+            Node(1, 1.0, 0.0, 0.0),
+            Node(2, 0.0, 1.0, 0.0)
+    };
+    std::vector<int> nodeIndexes = {0, 1, 2};
+    Element e(0, nodeIndexes, 3);
+    NodePool np(3, nodes);
+    double area = areaCalc(e, np);
+    assert(area == 0.5); // Area of a triangle with base and height of 1
+    std::cout << "Area calculation test passed!" << std::endl;
+}
+void testCentroidCalc() {
+    std::vector<Node> nodes = {
+            Node(0, 0.0, 0.0, 0.0),
+            Node(1, 1.0, 0.0, 0.0),
+            Node(2, 0.0, 1.0, 0.0)
+    };
+    std::vector<int> nodeIndexes = {0, 1, 2};
+    Element e(0, nodeIndexes, 3);
+    NodePool np(3, nodes);
+    std::vector<double> centroid = getElementCentroid2D(e, np);
+    assert(centroid[0] == 1.0 / 3.0);
+    assert(centroid[1] == 1.0 / 3.0);
+    std::cout << "Centroid calculation test passed!" << std::endl;
+}
+void testEdgePool() {
+    std::vector<Node> nodes = {
+            Node(0, 0.0, 0.0, 0.0),
+            Node(1, 1.0, 0.0, 0.0),
+            Node(2, 0.0, 1.0, 0.0),
+            Node(3, 1.0, 1.0, 0.0)
+    };
+    std::vector<Element> elements = {
+            Element(0, {0, 1, 2}, 3),
+            Element(1, {1, 2, 3}, 3)
+    };
+    NodePool np(4, nodes);
+    ElementPool ep(3, 2, elements);
+    EdgePool edgePool(np, ep);
+    assert(edgePool.edges.size() == 4);  // Check if the expected number of edges is created
+    std::cout << "EdgePool test passed!" << std::endl;
+}
+void testNeighbourService() {
+    std::vector<Node> nodes = {
+            Node(0, 0.0, 0.0, 0.0),
+            Node(1, 1.0, 0.0, 0.0),
+            Node(2, 0.0, 1.0, 0.0),
+            Node(3, 1.0, 1.0, 0.0)
+    };
+    std::vector<Element> elements = {
+            Element(0, {0, 1, 2}, 3),
+            Element(1, {1, 2, 3}, 3)
+    };
+    NodePool np(4, nodes);
+    ElementPool ep(3, 2, elements);
+    EdgePool edgePool(np, ep);
+    NeighbourService ns(np, ep, edgePool);
+
+    std::unordered_set<int> nodeNeighbours = ns.getNodeNeighbours(1);
+    assert(nodeNeighbours.size() == 2);  // Node 1 should be shared by two elements
+    std::cout << "NeighbourService test passed!" << std::endl;
+}
+
 int main() {
+    testNode();
+    testElement();
+    testEdge();
+    testAreaCalc();
+    testCentroidCalc();
+    testEdgePool();
+    testNeighbourService();
 
     World world("InputData/mesh005.txt");
     //world.display();
